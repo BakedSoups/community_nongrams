@@ -47,6 +47,31 @@
       volume: 0.35,
       html5: true
     });
+    const sfx = {
+      pencil: new Howl({
+        src: ["audio/u_o8xh7gwsrj-app_interface_click_2-476372.mp3"],
+        volume: 0.65
+      }),
+      eraser: new Howl({
+        src: ["audio/audley_fergine-ui-button-click-5-327756.mp3"],
+        volume: 0.65
+      }),
+      correct: new Howl({
+        src: ["audio/liecio-menu_beep_accept_soft-533780.mp3"],
+        volume: 0.8
+      }),
+      complete: new Howl({
+        src: ["audio/koiroylers-awesome-level-up-351714.mp3"],
+        volume: 0.85
+      })
+    };
+    window.setMusicMuted = (muted) => Howler.mute(muted);
+    window.playSFX = (name) => {
+      const sound = sfx[name];
+      if (sound) {
+        sound.play();
+      }
+    };
 
     const startMusic = () => {
       if (!music.playing()) {

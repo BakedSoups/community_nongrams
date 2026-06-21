@@ -136,11 +136,17 @@ func makeHomeIcon() image.Image {
 func makeGearIcon() image.Image {
 	img := iconCanvas()
 	ink := color.RGBA{45, 44, 40, 255}
-	for i := 0; i < 8; i++ {
-		a := float64(i) * 0.78539816339
-		line(img, 32+int(mathCos(a)*17), 32+int(mathSin(a)*17), 32+int(mathCos(a)*24), 32+int(mathSin(a)*24), ink, 4)
-	}
-	circleStroke(img, 32, 32, 15, ink, 4)
+
+	fillRect(img, 28, 7, 8, 11, ink)
+	fillRect(img, 28, 46, 8, 11, ink)
+	fillRect(img, 7, 28, 11, 8, ink)
+	fillRect(img, 46, 28, 11, 8, ink)
+	fillRect(img, 14, 13, 8, 8, ink)
+	fillRect(img, 42, 13, 8, 8, ink)
+	fillRect(img, 14, 43, 8, 8, ink)
+	fillRect(img, 42, 43, 8, 8, ink)
+
+	circleStroke(img, 32, 32, 16, ink, 6)
 	circleStroke(img, 32, 32, 5, ink, 4)
 	return img
 }
@@ -212,6 +218,16 @@ func dot(img *image.RGBA, cx, cy, width int, c color.RGBA) {
 		for x := cx - r; x <= cx+r; x++ {
 			if image.Pt(x, y).In(img.Bounds()) {
 				img.SetRGBA(x, y, c)
+			}
+		}
+	}
+}
+
+func fillRect(img *image.RGBA, x, y, w, h int, c color.RGBA) {
+	for yy := y; yy < y+h; yy++ {
+		for xx := x; xx < x+w; xx++ {
+			if image.Pt(xx, yy).In(img.Bounds()) {
+				img.SetRGBA(xx, yy, c)
 			}
 		}
 	}
