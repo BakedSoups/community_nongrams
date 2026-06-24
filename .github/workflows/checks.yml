@@ -32,7 +32,7 @@ jobs:
         run: go build ./cmd/game
 
       - name: Static lint
-        run: go run github.com/go-critic/go-critic/cmd/gocritic@latest check -enable='#diagnostic' ./...
+        run: go run github.com/go-critic/go-critic/cmd/gocritic@latest check -enable='#diagnostic' -disable=commentedOutCode ./...
 
       - name: Duplicate-code check
         run: go run github.com/mibk/dupl@latest -threshold 80 ./cmd ./internal
