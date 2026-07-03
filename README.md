@@ -18,13 +18,24 @@ Controls:
 
 ## Add A Puzzle
 
-Create one PNG or WebP spritesheet in `levels/` named like:
+Create a folder in `levels/` named with the level number and title:
 
 ```text
-L3-Flower_16.png
+levels/007-flower/
+  art.png
 ```
 
-The suffix is the tile size. A `_16` file should be 32x16: the left 16x16 tile is the before/line art and puzzle solution, and the right 16x16 tile is the colored reveal. If the suffix is wrong but the image is still a two-panel sheet, the generator uses the image height as the tile size.
+The image can be named `art.png`, `art.webp`, `sheet.png`, or `sheet.webp`. If there is only one PNG or WebP in the folder, that file is used automatically.
+
+The image must be a two-panel spritesheet: the left tile is the before/line art and puzzle solution, and the right tile is the colored reveal. A 10x10 level should be a 20x10 image, and a 15x15 level should be a 30x15 image. The generator infers the tile size from the image height.
+
+The older flat-file format still works:
+
+```text
+levels/L3-Flower_16.png
+```
+
+In that format, the suffix is the tile size. A `_16` file should be 32x16. If the suffix is wrong but the image is still a two-panel sheet, the generator uses the image height as the tile size.
 
 For opaque black-and-white line art, the generator treats the dominant white-ish or black-ish first-panel color as the empty background.
 
