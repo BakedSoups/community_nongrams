@@ -22,6 +22,14 @@ func (g *Game) updateInput() {
 		g.updateSettingsInput()
 		return
 	}
+	if g.mode == screenEditor {
+		g.updateEditorInput()
+		return
+	}
+	if g.mode == screenCommunity {
+		g.updateCommunityInput()
+		return
+	}
 	if g.mode == screenReveal {
 		g.updateRevealInput()
 		return
@@ -157,11 +165,174 @@ func (g *Game) updateMainMenuInput() {
 		return
 	}
 	switch {
-	case g.layout.levelSelectButton.Contains(x, y):
+	case mainLevelButton().Contains(x, y):
 		g.mode = screenLevelSelect
-	case g.layout.mainSettingsButton.Contains(x, y):
+	case mainEditorButton().Contains(x, y):
+		g.mode = screenEditor
+	case mainCommunityButton().Contains(x, y):
+		g.mode = screenCommunity
+	case mainSettingsButton().Contains(x, y):
 		g.mode = screenSettings
 	}
+}
+
+func (g *Game) updateCommunityInput() {
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		g.mode = screenMainMenu
+		return
+	}
+	x, y, _, justPressed, _ := pointerState()
+	if justPressed && communityBackButton().Contains(x, y) {
+		g.mode = screenMainMenu
+	}
+}
+
+func (g *Game) updateEditorInput() {
+	if raw := takeEditorImageImport(); raw != "" {
+		g.pushEditorUndo()
+		if err := g.editor.importPayload(raw); err != nil {
+			g.showMenuNotice("import failed")
+		} else {
+			g.showMenuNotice("image imported")
+		}
+	}
+	if raw := takeEditorPackImport(); raw != "" {
+		g.pushEditorUndo()
+		if editor, err := editorFromPackJSON(raw); err != nil {
+			g.showMenuNotice("pack failed")
+		} else {
+			g.editor = editor
+			g.showMenuNotice("pack imported")
+		}
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		g.mode = screenMainMenu
+		return
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyZ) {
+		g.undoEditor()
+		return
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyA) {
+		g.editor.Mode = editorModeArt
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyS) {
+		g.editor.Mode = editorModeSolution
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
+		g.editor.Tool = editorToolPencil
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyE) {
+		g.editor.Tool = editorToolEraser
+	}
+
+	x, y, down, justPressed, justReleased := pointerState()
+	if justReleased {
+		g.editorPointer = false
+		g.editorLastX = -1
+		g.editorLastY = -1
+	}
+	if justPressed {
+		if g.handleEditorButton(x, y) {
+			return
+		}
+		for i, c := range editorPalette {
+			if editorPaletteRect(i).Contains(x, y) {
+				g.editor.PaintColor = c
+				return
+			}
+		}
+		cellX, cellY, ok := editorCellAt(g.editor, x, y)
+		if ok {
+			g.pushEditorUndo()
+			g.editor.apply(cellX, cellY)
+			g.editorPointer = true
+			g.editorLastX = cellX
+			g.editorLastY = cellY
+			return
+		}
+	}
+	if !down || !g.editorPointer || g.editor.Tool == editorToolFill || g.editor.Tool == editorToolEyedropper {
+		return
+	}
+	cellX, cellY, ok := editorCellAt(g.editor, x, y)
+	if !ok || (cellX == g.editorLastX && cellY == g.editorLastY) {
+		return
+	}
+	g.editor.apply(cellX, cellY)
+	g.editorLastX = cellX
+	g.editorLastY = cellY
+}
+
+func (g *Game) handleEditorButton(x, y int) bool {
+	switch {
+	case editorBackButton().Contains(x, y):
+		g.mode = screenMainMenu
+	case editorPreviewButton().Contains(x, y):
+		g.loadEditorPuzzle()
+	case editorSaveButton().Contains(x, y):
+		g.saveEditor()
+	case editorExportButton().Contains(x, y):
+		g.exportEditor()
+	case editorImportPackButton().Contains(x, y):
+		if !requestEditorPackImport() {
+			g.showMenuNotice("import unavailable")
+		}
+	case editorArtButton().Contains(x, y):
+		g.editor.Mode = editorModeArt
+	case editorSolutionButton().Contains(x, y):
+		g.editor.Mode = editorModeSolution
+	case editorPencilButton().Contains(x, y):
+		g.editor.Tool = editorToolPencil
+	case editorEraserButton().Contains(x, y):
+		g.editor.Tool = editorToolEraser
+	case editorFillButton().Contains(x, y):
+		g.editor.Tool = editorToolFill
+	case editorEyeButton().Contains(x, y):
+		g.editor.Tool = editorToolEyedropper
+	case editorAutoVisibleButton().Contains(x, y):
+		g.pushEditorUndo()
+		g.editor.autoSolutionFromVisible()
+	case editorAutoBrightButton().Contains(x, y):
+		g.pushEditorUndo()
+		g.editor.autoSolutionFromBrightness()
+	case editorInvertButton().Contains(x, y):
+		g.pushEditorUndo()
+		g.editor.invertSolution()
+	case editorImportButton().Contains(x, y):
+		if !requestEditorImageImport(g.editor.Width) {
+			g.showMenuNotice("import unavailable")
+		}
+	case editorSize8Button().Contains(x, y):
+		g.resetEditor(8)
+	case editorSize10Button().Contains(x, y):
+		g.resetEditor(10)
+	case editorSize15Button().Contains(x, y):
+		g.resetEditor(15)
+	case editorSize20Button().Contains(x, y):
+		g.resetEditor(20)
+	case editorBrightDownButton().Contains(x, y):
+		g.pushEditorUndo()
+		g.editor.applyBrightness(-18)
+	case editorBrightUpButton().Contains(x, y):
+		g.pushEditorUndo()
+		g.editor.applyBrightness(18)
+	case editorSatDownButton().Contains(x, y):
+		g.pushEditorUndo()
+		g.editor.applySaturation(-0.18)
+	case editorSatUpButton().Contains(x, y):
+		g.pushEditorUndo()
+		g.editor.applySaturation(0.18)
+	case editorPosterizeButton().Contains(x, y):
+		g.pushEditorUndo()
+		g.editor.posterize()
+	case editorSnapButton().Contains(x, y):
+		g.pushEditorUndo()
+		g.editor.snapToPalette(editorPalette)
+	default:
+		return false
+	}
+	return true
 }
 
 func (g *Game) updateLevelSelectInput() {

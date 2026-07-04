@@ -61,6 +61,13 @@ type Game struct {
 	menuNotice      string
 	menuNoticeUntil time.Time
 	levelPage       int
+
+	editor          editorState
+	editorUndo      []editorState
+	editorPointer   bool
+	editorLastX     int
+	editorLastY     int
+	communityNotice string
 }
 
 type sparkle struct {
@@ -101,9 +108,21 @@ func New(puzzlePath string) (*Game, error) {
 		mode:           screenMainMenu,
 		bestTimes:      loadBestTimes(),
 		levelThumbs:    loadLevelThumbs(),
+		editor:         initialEditor(),
+		editorLastX:    -1,
+		editorLastY:    -1,
 	}
 	g.sparkles = makeSparkles()
 	return g, nil
+}
+
+func initialEditor() editorState {
+	if saved := loadEditorPack(); saved != "" {
+		if editor, err := editorFromPackJSON(saved); err == nil {
+			return editor
+		}
+	}
+	return newEditorState(10)
 }
 
 func loadBestTimes() map[string]time.Duration {
@@ -209,6 +228,70 @@ func (g *Game) loadPuzzle(path string) error {
 	g.strokeState = nonogram.CellEmpty
 	g.mode = screenPuzzle
 	return nil
+}
+
+func (g *Game) loadEditorPuzzle() {
+	p := g.editor.puzzle()
+	g.puzzle = p
+	g.board = nonogram.NewBoard(p.Width, p.Height)
+	g.rowClues = nonogram.RowClues(p.Solution)
+	g.colClues = nonogram.ColumnClues(p.Solution)
+	g.skeleton = nil
+	g.reveal = nil
+	g.skeletonPixels = g.editor.pixelMatrix()
+	g.revealPixels = g.editor.pixelMatrix()
+	g.undoStack = nil
+	g.startTime = time.Now()
+	g.timePenalty = 0
+	g.completedIn = 0
+	g.pointerDown = false
+	g.dragging = false
+	g.lastCellX = -1
+	g.lastCellY = -1
+	g.correctFlashX = -1
+	g.correctFlashY = -1
+	g.strokeState = nonogram.CellEmpty
+	g.mode = screenPuzzle
+}
+
+func (g *Game) pushEditorUndo() {
+	g.editorUndo = append(g.editorUndo, g.editor.clone())
+	if len(g.editorUndo) > 40 {
+		g.editorUndo = g.editorUndo[1:]
+	}
+}
+
+func (g *Game) undoEditor() {
+	if len(g.editorUndo) == 0 {
+		return
+	}
+	last := g.editorUndo[len(g.editorUndo)-1]
+	g.editorUndo = g.editorUndo[:len(g.editorUndo)-1]
+	g.editor = last
+}
+
+func (g *Game) resetEditor(size int) {
+	g.pushEditorUndo()
+	g.editor = newEditorState(size)
+	g.editorPointer = false
+	g.editorLastX = -1
+	g.editorLastY = -1
+}
+
+func (g *Game) saveEditor() {
+	if saveEditorPack(g.editor.packJSON()) {
+		g.showMenuNotice("saved")
+		return
+	}
+	g.showMenuNotice("save unavailable")
+}
+
+func (g *Game) exportEditor() {
+	if exportEditorPack("pixaross-pack.json", g.editor.packJSON()) {
+		g.showMenuNotice("exported")
+		return
+	}
+	g.showMenuNotice("export unavailable")
 }
 
 func (g *Game) loadLevel(index int) error {

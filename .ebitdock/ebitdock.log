@@ -53,3 +53,34 @@
 19:16:55 wasmserve started: wasmserve -http :8080 ../cmd/game
 19:16:55 dashboard listening on http://localhost:8081
 19:16:55 2026/06/23 19:16:55 Listening on :8080
+16:58:44 dev starting
+16:58:44 wasmserve ready
+16:58:44 wrote compose file: /home/alex/code/pp/nongrampictures/.ebitdock/compose.yaml
+16:58:44 rebuilding wasm
+16:58:44 building wasm
+16:58:45 go: go.mod requires go >= 1.26.4 (running go 1.24.13; GOTOOLCHAIN=local)
+
+16:58:45 wasm docker build failed: exit status 1
+17:04:14 dev starting
+17:04:14 wasmserve ready
+17:04:14 wrote compose file: /home/alex/code/pp/nongrampictures/.ebitdock/compose.yaml
+17:04:14 rebuilding wasm
+17:04:14 building wasm
+17:04:15 go: go.mod requires go >= 1.26.4 (running go 1.24.13; GOTOOLCHAIN=local)
+
+17:04:15 wasm docker build failed: exit status 1
+17:41:32 dev starting
+17:41:32 wasmserve ready
+17:41:32 wrote compose file: /home/alex/code/pp/nongrampictures/.ebitdock/compose.yaml
+17:41:32 rebuilding wasm
+17:41:32 building wasm
+17:41:33 go: go.mod requires go >= 1.26.4 (running go 1.24.13; GOTOOLCHAIN=local)
+
+17:41:33 wasm docker build failed: exit status 1
+23:02:27 dev starting
+23:02:27 wasmserve started: wasmserve -http :8080 ../cmd/game
+23:02:27 wasmserve started
+23:02:27 wrote compose file: /home/alex/code/pp/nongrampictures/.ebitdock/compose.yaml
+23:02:27 wasmserve owns WASM rebuilds
+23:02:27 dev hint: static/index.html loads game.wasm; wasmserve rebuilds only main.wasm during dev
+23:02:27 dashboard listening on http://localhost:8081

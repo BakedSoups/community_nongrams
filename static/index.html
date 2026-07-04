@@ -72,6 +72,86 @@
         sound.play();
       }
     };
+    window.downloadEditorPack = (filename, raw) => {
+      const blob = new Blob([raw], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || "pixaross-pack.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    };
+    window.__pendingEditorImageImport = "";
+    window.__pendingEditorPackImport = "";
+    window.takeEditorImageImport = () => {
+      const raw = window.__pendingEditorImageImport || "";
+      window.__pendingEditorImageImport = "";
+      return raw;
+    };
+    window.takeEditorPackImport = () => {
+      const raw = window.__pendingEditorPackImport || "";
+      window.__pendingEditorPackImport = "";
+      return raw;
+    };
+    window.requestEditorPackImport = () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "application/json,.json";
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) {
+          return;
+        }
+        file.text().then((text) => {
+          window.__pendingEditorPackImport = text;
+        }).catch(() => {
+          window.__pendingEditorPackImport = "";
+        });
+      };
+      input.click();
+    };
+    window.requestEditorImageImport = (size) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/png,image/jpeg,image/webp,image/gif";
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) {
+          return;
+        }
+        const image = new Image();
+        image.onload = () => {
+          const tileSize = Math.max(1, Number(size) || 10);
+          const canvas = document.createElement("canvas");
+          canvas.width = tileSize;
+          canvas.height = tileSize;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          ctx.imageSmoothingEnabled = true;
+          const side = Math.min(image.width, image.height);
+          const sx = Math.floor((image.width - side) / 2);
+          const sy = Math.floor((image.height - side) / 2);
+          ctx.clearRect(0, 0, tileSize, tileSize);
+          ctx.drawImage(image, sx, sy, side, side, 0, 0, tileSize, tileSize);
+          const data = ctx.getImageData(0, 0, tileSize, tileSize).data;
+          const cells = [];
+          for (let i = 0; i < data.length; i += 4) {
+            cells.push({ r: data[i], g: data[i + 1], b: data[i + 2], a: data[i + 3] });
+          }
+          window.__pendingEditorImageImport = JSON.stringify({ width: tileSize, height: tileSize, cells });
+          URL.revokeObjectURL(image.src);
+        };
+        image.src = URL.createObjectURL(file);
+      };
+      input.click();
+    };
+    window.communityFetchStatus = () => {
+      if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+        return "Set window.SUPABASE_URL and window.SUPABASE_ANON_KEY to enable live packs.";
+      }
+      return "Supabase config detected. Pack API wiring is ready for the next backend step.";
+    };
 
     const startMusic = () => {
       if (!music.playing()) {

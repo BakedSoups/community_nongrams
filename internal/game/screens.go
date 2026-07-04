@@ -8,4 +8,6 @@ const (
 	screenPuzzle
 	screenReveal
 	screenSettings
+	screenEditor
+	screenCommunity
 )
