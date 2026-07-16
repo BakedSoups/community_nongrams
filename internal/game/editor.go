@@ -150,20 +150,6 @@ func (e *editorState) apply(x, y int) {
 	if cell == nil {
 		return
 	}
-	if e.Mode == editorModeSolution {
-		switch e.Tool {
-		case editorToolEraser:
-			cell.Filled = false
-		case editorToolEyedropper:
-			if cell.Visible {
-				e.PaintColor = cell.Color
-			}
-		default:
-			cell.Filled = true
-		}
-		return
-	}
-
 	switch e.Tool {
 	case editorToolPencil:
 		cell.Color = e.PaintColor
@@ -174,9 +160,41 @@ func (e *editorState) apply(x, y int) {
 	case editorToolEyedropper:
 		if cell.Visible {
 			e.PaintColor = cell.Color
+			e.Tool = editorToolPencil
 		}
 	case editorToolFill:
 		e.fillArt(x, y)
+	}
+	e.autoSolutionFromVisible()
+}
+
+func (e *editorState) applyLine(x0, y0, x1, y1 int) {
+	dx := absInt(x1 - x0)
+	sx := -1
+	if x0 < x1 {
+		sx = 1
+	}
+	dy := -absInt(y1 - y0)
+	sy := -1
+	if y0 < y1 {
+		sy = 1
+	}
+	err := dx + dy
+
+	for {
+		e.apply(x0, y0)
+		if x0 == x1 && y0 == y1 {
+			return
+		}
+		e2 := 2 * err
+		if e2 >= dy {
+			err += dy
+			x0 += sx
+		}
+		if e2 <= dx {
+			err += dx
+			y0 += sy
+		}
 	}
 }
 
@@ -413,6 +431,13 @@ func colorDistance(a, b color.RGBA) int {
 	dg := int(a.G) - int(b.G)
 	db := int(a.B) - int(b.B)
 	return dr*dr + dg*dg + db*db
+}
+
+func absInt(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
 }
 
 func parseEditorHexColor(value string) (color.RGBA, bool) {

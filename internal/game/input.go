@@ -213,17 +213,14 @@ func (g *Game) updateEditorInput() {
 		g.undoEditor()
 		return
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyA) {
-		g.editor.Mode = editorModeArt
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyS) {
-		g.editor.Mode = editorModeSolution
-	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
 		g.editor.Tool = editorToolPencil
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyE) {
 		g.editor.Tool = editorToolEraser
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
+		g.editor.Tool = editorToolFill
 	}
 
 	x, y, down, justPressed, justReleased := pointerState()
@@ -239,6 +236,7 @@ func (g *Game) updateEditorInput() {
 		for i, c := range editorPalette {
 			if editorPaletteRect(i).Contains(x, y) {
 				g.editor.PaintColor = c
+				g.editor.Tool = editorToolPencil
 				return
 			}
 		}
@@ -259,7 +257,7 @@ func (g *Game) updateEditorInput() {
 	if !ok || (cellX == g.editorLastX && cellY == g.editorLastY) {
 		return
 	}
-	g.editor.apply(cellX, cellY)
+	g.editor.applyLine(g.editorLastX, g.editorLastY, cellX, cellY)
 	g.editorLastX = cellX
 	g.editorLastY = cellY
 }
@@ -268,20 +266,14 @@ func (g *Game) handleEditorButton(x, y int) bool {
 	switch {
 	case editorBackButton().Contains(x, y):
 		g.mode = screenMainMenu
+	case editorUndoButton().Contains(x, y):
+		g.undoEditor()
 	case editorPreviewButton().Contains(x, y):
 		g.loadEditorPuzzle()
 	case editorSaveButton().Contains(x, y):
 		g.saveEditor()
 	case editorExportButton().Contains(x, y):
 		g.exportEditor()
-	case editorImportPackButton().Contains(x, y):
-		if !requestEditorPackImport() {
-			g.showMenuNotice("import unavailable")
-		}
-	case editorArtButton().Contains(x, y):
-		g.editor.Mode = editorModeArt
-	case editorSolutionButton().Contains(x, y):
-		g.editor.Mode = editorModeSolution
 	case editorPencilButton().Contains(x, y):
 		g.editor.Tool = editorToolPencil
 	case editorEraserButton().Contains(x, y):
@@ -290,15 +282,6 @@ func (g *Game) handleEditorButton(x, y int) bool {
 		g.editor.Tool = editorToolFill
 	case editorEyeButton().Contains(x, y):
 		g.editor.Tool = editorToolEyedropper
-	case editorAutoVisibleButton().Contains(x, y):
-		g.pushEditorUndo()
-		g.editor.autoSolutionFromVisible()
-	case editorAutoBrightButton().Contains(x, y):
-		g.pushEditorUndo()
-		g.editor.autoSolutionFromBrightness()
-	case editorInvertButton().Contains(x, y):
-		g.pushEditorUndo()
-		g.editor.invertSolution()
 	case editorImportButton().Contains(x, y):
 		if !requestEditorImageImport(g.editor.Width) {
 			g.showMenuNotice("import unavailable")
@@ -311,24 +294,6 @@ func (g *Game) handleEditorButton(x, y int) bool {
 		g.resetEditor(15)
 	case editorSize20Button().Contains(x, y):
 		g.resetEditor(20)
-	case editorBrightDownButton().Contains(x, y):
-		g.pushEditorUndo()
-		g.editor.applyBrightness(-18)
-	case editorBrightUpButton().Contains(x, y):
-		g.pushEditorUndo()
-		g.editor.applyBrightness(18)
-	case editorSatDownButton().Contains(x, y):
-		g.pushEditorUndo()
-		g.editor.applySaturation(-0.18)
-	case editorSatUpButton().Contains(x, y):
-		g.pushEditorUndo()
-		g.editor.applySaturation(0.18)
-	case editorPosterizeButton().Contains(x, y):
-		g.pushEditorUndo()
-		g.editor.posterize()
-	case editorSnapButton().Contains(x, y):
-		g.pushEditorUndo()
-		g.editor.snapToPalette(editorPalette)
 	default:
 		return false
 	}

@@ -1,9 +1,7 @@
 package game
 
 import (
-	"fmt"
 	"image/color"
-	"strings"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -12,25 +10,23 @@ import (
 
 func (g *Game) drawEditor(screen *ebiten.Image) {
 	screen.Fill(colPanel)
-	drawScaledTextCentered(screen, "EDITOR", rect{x: 36, y: 28, w: 220, h: 44}, 1.85, colInk)
+	drawScaledTextCentered(screen, "DRAW", rect{x: 150, y: 22, w: 240, h: 42}, 1.85, colInk)
 	drawButton(screen, editorBackButton(), "back")
-	drawButton(screen, editorPreviewButton(), "preview")
-	drawButton(screen, editorSaveButton(), "save")
-	drawButton(screen, editorExportButton(), "export")
-	drawButton(screen, editorImportPackButton(), "import pack")
+	drawButton(screen, editorUndoButton(), "undo")
 
 	g.drawEditorGrid(screen)
 	g.drawEditorToolbar(screen)
 	g.drawEditorPalette(screen)
-	g.drawEditorColorPanel(screen)
+	g.drawEditorCanvasSizes(screen)
+	g.drawEditorActions(screen)
 
 	if time.Now().Before(g.menuNoticeUntil) {
-		drawCenteredText(screen, g.menuNotice, rect{x: 0, y: 736, w: ScreenWidth, h: 28}, colAccent)
+		drawCenteredText(screen, g.menuNotice, rect{x: 120, y: 64, w: 300, h: 24}, colAccent)
 	}
 }
 
 func (g *Game) drawEditorGrid(screen *ebiten.Image) {
-	grid := editorGridRect()
+	grid := editorGridRect(g.editor)
 	drawRounded(screen, rect{x: grid.x - 8, y: grid.y - 8, w: grid.w + 16, h: grid.h + 16}, 8, colGridHeavy)
 	vector.DrawFilledRect(screen, float32(grid.x), float32(grid.y), float32(grid.w), float32(grid.h), colWhite, false)
 	cell := editorCellSize(g.editor)
@@ -43,9 +39,6 @@ func (g *Game) drawEditorGrid(screen *ebiten.Image) {
 			c := g.editor.Cells[g.editor.index(x, y)]
 			if c.Visible {
 				vector.DrawFilledRect(screen, float32(r.x), float32(r.y), float32(r.w), float32(r.h), c.Color, false)
-			}
-			if g.editor.Mode == editorModeSolution && c.Filled {
-				drawRectOutline(screen, inset(r, 4), 3, colBlue)
 			}
 		}
 	}
@@ -72,20 +65,10 @@ func (g *Game) drawEditorGrid(screen *ebiten.Image) {
 }
 
 func (g *Game) drawEditorToolbar(screen *ebiten.Image) {
-	drawButton(screen, editorArtButton(), modeLabel("art", g.editor.Mode == editorModeArt))
-	drawButton(screen, editorSolutionButton(), modeLabel("solution", g.editor.Mode == editorModeSolution))
-	drawButton(screen, editorPencilButton(), toolLabel("pencil", g.editor.Tool == editorToolPencil))
-	drawButton(screen, editorEraserButton(), toolLabel("eraser", g.editor.Tool == editorToolEraser))
+	drawButton(screen, editorPencilButton(), toolLabel("draw", g.editor.Tool == editorToolPencil))
+	drawButton(screen, editorEraserButton(), toolLabel("erase", g.editor.Tool == editorToolEraser))
 	drawButton(screen, editorFillButton(), toolLabel("fill", g.editor.Tool == editorToolFill))
-	drawButton(screen, editorEyeButton(), toolLabel("eye", g.editor.Tool == editorToolEyedropper))
-	drawButton(screen, editorAutoVisibleButton(), "auto visible")
-	drawButton(screen, editorAutoBrightButton(), "auto dark")
-	drawButton(screen, editorInvertButton(), "invert")
-	drawButton(screen, editorImportButton(), "import image")
-	drawButton(screen, editorSize8Button(), "8")
-	drawButton(screen, editorSize10Button(), "10")
-	drawButton(screen, editorSize15Button(), "15")
-	drawButton(screen, editorSize20Button(), "20")
+	drawButton(screen, editorEyeButton(), toolLabel("pick", g.editor.Tool == editorToolEyedropper))
 }
 
 func (g *Game) drawEditorPalette(screen *ebiten.Image) {
@@ -96,20 +79,21 @@ func (g *Game) drawEditorPalette(screen *ebiten.Image) {
 			drawRectOutline(screen, rect{x: r.x - 3, y: r.y - 3, w: r.w + 6, h: r.h + 6}, 3, colInk)
 		}
 	}
-	drawText(screen, "paint", 48, 610, colMuted)
-	drawRounded(screen, rect{x: 48, y: 626, w: 64, h: 34}, 5, g.editor.PaintColor)
-	drawRectOutline(screen, rect{x: 48, y: 626, w: 64, h: 34}, 2, colGridHeavy)
 }
 
-func (g *Game) drawEditorColorPanel(screen *ebiten.Image) {
-	drawText(screen, fmt.Sprintf("%dx%d", g.editor.Width, g.editor.Height), 48, 686, colInk)
-	drawText(screen, strings.ToUpper(editorModeName(g.editor.Mode)), 120, 686, colInk)
-	drawButton(screen, editorBrightDownButton(), "bright -")
-	drawButton(screen, editorBrightUpButton(), "bright +")
-	drawButton(screen, editorSatDownButton(), "sat -")
-	drawButton(screen, editorSatUpButton(), "sat +")
-	drawButton(screen, editorPosterizeButton(), "posterize")
-	drawButton(screen, editorSnapButton(), "snap")
+func (g *Game) drawEditorCanvasSizes(screen *ebiten.Image) {
+	drawText(screen, "canvas", 44, 665, colMuted)
+	drawButton(screen, editorSize8Button(), modeLabel("8", g.editor.Width == 8 && g.editor.Height == 8))
+	drawButton(screen, editorSize10Button(), modeLabel("10", g.editor.Width == 10 && g.editor.Height == 10))
+	drawButton(screen, editorSize15Button(), modeLabel("15", g.editor.Width == 15 && g.editor.Height == 15))
+	drawButton(screen, editorSize20Button(), modeLabel("20", g.editor.Width == 20 && g.editor.Height == 20))
+}
+
+func (g *Game) drawEditorActions(screen *ebiten.Image) {
+	drawButton(screen, editorImportButton(), "image")
+	drawButton(screen, editorSaveButton(), "save")
+	drawButton(screen, editorExportButton(), "export")
+	drawButton(screen, editorPreviewButton(), "play")
 }
 
 func (g *Game) drawCommunity(screen *ebiten.Image) {
@@ -135,58 +119,55 @@ func toolLabel(label string, active bool) string {
 	return modeLabel(label, active)
 }
 
-func editorModeName(mode editorMode) string {
-	if mode == editorModeSolution {
-		return "solution"
-	}
-	return "art"
+func editorGridArea() rect { return rect{x: 40, y: 98, w: 460, h: 430} }
+
+func editorGridRect(e editorState) rect {
+	area := editorGridArea()
+	cell := editorCellSize(e)
+	w := cell * float64(e.Width)
+	h := cell * float64(e.Height)
+	return rect{x: area.x + (area.w-w)/2, y: area.y + (area.h-h)/2, w: w, h: h}
 }
 
-func editorGridRect() rect { return rect{x: 48, y: 128, w: 360, h: 360} }
-
 func editorCellSize(e editorState) float64 {
-	size := float64(e.Width)
-	if e.Height > e.Width {
-		size = float64(e.Height)
-	}
-	return editorGridRect().w / size
+	area := editorGridArea()
+	return float64(int(minFloat(area.w/float64(e.Width), area.h/float64(e.Height))))
 }
 
 func editorCellAt(e editorState, px, py int) (int, int, bool) {
-	grid := editorGridRect()
+	grid := editorGridRect(e)
+	if float64(px) < grid.x || float64(px) >= grid.x+grid.w || float64(py) < grid.y || float64(py) >= grid.y+grid.h {
+		return 0, 0, false
+	}
 	cell := editorCellSize(e)
 	x := int((float64(px) - grid.x) / cell)
 	y := int((float64(py) - grid.y) / cell)
 	return x, y, e.inBounds(x, y)
 }
 
-func editorBackButton() rect        { return rect{x: 424, y: 28, w: 82, h: 38} }
-func editorPreviewButton() rect     { return rect{x: 424, y: 78, w: 82, h: 38} }
-func editorSaveButton() rect        { return rect{x: 424, y: 128, w: 82, h: 38} }
-func editorExportButton() rect      { return rect{x: 424, y: 178, w: 82, h: 38} }
-func editorImportPackButton() rect  { return rect{x: 424, y: 228, w: 82, h: 38} }
-func editorArtButton() rect         { return rect{x: 424, y: 286, w: 82, h: 34} }
-func editorSolutionButton() rect    { return rect{x: 424, y: 328, w: 82, h: 34} }
-func editorPencilButton() rect      { return rect{x: 424, y: 378, w: 82, h: 34} }
-func editorEraserButton() rect      { return rect{x: 424, y: 420, w: 82, h: 34} }
-func editorFillButton() rect        { return rect{x: 424, y: 462, w: 82, h: 34} }
-func editorEyeButton() rect         { return rect{x: 424, y: 504, w: 82, h: 34} }
-func editorAutoVisibleButton() rect { return rect{x: 48, y: 510, w: 108, h: 34} }
-func editorAutoBrightButton() rect  { return rect{x: 166, y: 510, w: 92, h: 34} }
-func editorInvertButton() rect      { return rect{x: 268, y: 510, w: 84, h: 34} }
-func editorImportButton() rect      { return rect{x: 48, y: 704, w: 144, h: 34} }
-func editorSize8Button() rect       { return rect{x: 424, y: 566, w: 36, h: 32} }
-func editorSize10Button() rect      { return rect{x: 470, y: 566, w: 36, h: 32} }
-func editorSize15Button() rect      { return rect{x: 424, y: 606, w: 36, h: 32} }
-func editorSize20Button() rect      { return rect{x: 470, y: 606, w: 36, h: 32} }
-func editorBrightDownButton() rect  { return rect{x: 198, y: 624, w: 86, h: 32} }
-func editorBrightUpButton() rect    { return rect{x: 294, y: 624, w: 86, h: 32} }
-func editorSatDownButton() rect     { return rect{x: 198, y: 664, w: 86, h: 32} }
-func editorSatUpButton() rect       { return rect{x: 294, y: 664, w: 86, h: 32} }
-func editorPosterizeButton() rect   { return rect{x: 392, y: 664, w: 114, h: 32} }
-func editorSnapButton() rect        { return rect{x: 392, y: 624, w: 114, h: 32} }
-func communityBackButton() rect     { return rect{x: 202, y: 650, w: 136, h: 42} }
+func editorBackButton() rect    { return rect{x: 40, y: 24, w: 82, h: 38} }
+func editorUndoButton() rect    { return rect{x: 418, y: 24, w: 82, h: 38} }
+func editorPencilButton() rect  { return rect{x: 40, y: 546, w: 105, h: 38} }
+func editorEraserButton() rect  { return rect{x: 155, y: 546, w: 105, h: 38} }
+func editorFillButton() rect    { return rect{x: 270, y: 546, w: 105, h: 38} }
+func editorEyeButton() rect     { return rect{x: 385, y: 546, w: 105, h: 38} }
+func editorSize8Button() rect   { return rect{x: 142, y: 651, w: 46, h: 32} }
+func editorSize10Button() rect  { return rect{x: 198, y: 651, w: 50, h: 32} }
+func editorSize15Button() rect  { return rect{x: 258, y: 651, w: 50, h: 32} }
+func editorSize20Button() rect  { return rect{x: 318, y: 651, w: 50, h: 32} }
+func editorImportButton() rect  { return rect{x: 40, y: 700, w: 105, h: 38} }
+func editorSaveButton() rect    { return rect{x: 155, y: 700, w: 105, h: 38} }
+func editorExportButton() rect  { return rect{x: 270, y: 700, w: 105, h: 38} }
+func editorPreviewButton() rect { return rect{x: 385, y: 700, w: 105, h: 38} }
+func communityBackButton() rect { return rect{x: 202, y: 650, w: 136, h: 42} }
 
 func editorPaletteRect(index int) rect {
-	return rect{x: 48 + float64(index%4)*44, y: 556 + float64(index/4)*44, w: 32, h: 32}
+	return rect{x: 48 + float64(index)*56, y: 603, w: 36, h: 36}
+}
+
+func minFloat(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
 }
