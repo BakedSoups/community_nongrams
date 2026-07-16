@@ -71,11 +71,18 @@ For a regular PNG without JSON, arrange any number of pairs horizontally (`Befor
 The app remains fully usable for guests without a backend. To enable accounts and publishing:
 
 1. Create a Supabase project and apply `supabase/migrations/001_community.sql`.
-2. Copy `static/config.example.js` to `static/config.js` and set the project URL and public anon key. Do not put a service-role key in `static/`.
-3. Add the game URL to Supabase Auth redirect URLs and enable email magic links.
-4. Deploy `supabase/functions/notify-official-submission` and set `WEBHOOK_SECRET`, `RESEND_API_KEY`, `REVIEW_EMAIL`, `REVIEW_FROM_EMAIL`, and `ADMIN_REVIEW_URL`.
-5. Create a Supabase Database Webhook for inserts on `official_submissions`, targeting that Edge Function with the matching `x-webhook-secret` header.
-6. Set reviewer profiles to `moderator` or `admin` with a trusted SQL/admin operation. Review submissions at `/admin.html` after signing in through the game.
+2. Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` in your shell or in a local `.env` file. You can copy `.env.example` as a starting point. Do not use a service-role key.
+3. Generate the ignored browser config:
+
+```sh
+scripts/write-web-config.sh
+```
+
+`scripts/dev-web.sh` runs this automatically before every web build.
+4. Add the game URL to Supabase Auth redirect URLs and enable email magic links.
+5. Deploy `supabase/functions/notify-official-submission` and set `WEBHOOK_SECRET`, `RESEND_API_KEY`, `REVIEW_EMAIL`, `REVIEW_FROM_EMAIL`, and `ADMIN_REVIEW_URL`.
+6. Create a Supabase Database Webhook for inserts on `official_submissions`, targeting that Edge Function with the matching `x-webhook-secret` header.
+7. Set reviewer profiles to `moderator` or `admin` with a trusted SQL/admin operation. Review submissions at `/admin.html` after signing in through the game.
 
 Published level versions are immutable. Packs reference exact versions, user data is protected by row-level security, and review emails contain an admin link rather than artwork attachments.
 

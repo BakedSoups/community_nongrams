@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PORT="${PORT:-8000}"
-BUILD_CMD='go run ./cmd/genlevels && GOOS=js GOARCH=wasm go build -o static/game.wasm ./cmd/game'
+BUILD_CMD='scripts/write-web-config.sh && go run ./cmd/genlevels && GOOS=js GOARCH=wasm go build -o static/game.wasm ./cmd/game'
 WATCH_PATHS=(cmd internal/game internal/nonogram internal/pixelpuzzle internal/assets/loader.go assets/ui levels static/index.html)
 
 build_game() {
