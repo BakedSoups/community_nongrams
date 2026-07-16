@@ -67,6 +67,9 @@ type Game struct {
 	editorPointer   bool
 	editorLastX     int
 	editorLastY     int
+	editorSizeOpen  bool
+	editorPreview   bool
+	editorOnionSkin bool
 	communityNotice string
 }
 
@@ -226,11 +229,13 @@ func (g *Game) loadPuzzle(path string) error {
 	g.correctFlashX = -1
 	g.correctFlashY = -1
 	g.strokeState = nonogram.CellEmpty
+	g.editorPreview = false
 	g.mode = screenPuzzle
 	return nil
 }
 
 func (g *Game) loadEditorPuzzle() {
+	_ = saveEditorPack(g.editor.packJSON())
 	p := g.editor.puzzle()
 	g.puzzle = p
 	g.board = nonogram.NewBoard(p.Width, p.Height)
@@ -238,8 +243,8 @@ func (g *Game) loadEditorPuzzle() {
 	g.colClues = nonogram.ColumnClues(p.Solution)
 	g.skeleton = nil
 	g.reveal = nil
-	g.skeletonPixels = g.editor.pixelMatrix()
-	g.revealPixels = g.editor.pixelMatrix()
+	g.skeletonPixels = g.editor.pixelMatrix(editorLayerBefore)
+	g.revealPixels = g.editor.pixelMatrix(editorLayerAfter)
 	g.undoStack = nil
 	g.startTime = time.Now()
 	g.timePenalty = 0
@@ -251,6 +256,7 @@ func (g *Game) loadEditorPuzzle() {
 	g.correctFlashX = -1
 	g.correctFlashY = -1
 	g.strokeState = nonogram.CellEmpty
+	g.editorPreview = true
 	g.mode = screenPuzzle
 }
 
@@ -287,11 +293,29 @@ func (g *Game) saveEditor() {
 }
 
 func (g *Game) exportEditor() {
-	if exportEditorPack("pixaross-pack.json", g.editor.packJSON()) {
+	if exportEditorImage("pixaross-art.jpg", g.editor.imageExportJSON()) {
 		g.showMenuNotice("exported")
 		return
 	}
 	g.showMenuNotice("export unavailable")
+}
+
+func (g *Game) leavePuzzle() {
+	if g.editorPreview {
+		g.editorPreview = false
+		g.mode = screenEditor
+		return
+	}
+	g.mode = screenMainMenu
+}
+
+func (g *Game) leaveReveal() {
+	if g.editorPreview {
+		g.editorPreview = false
+		g.mode = screenEditor
+		return
+	}
+	g.mode = screenLevelSelect
 }
 
 func (g *Game) loadLevel(index int) error {
@@ -364,6 +388,7 @@ func (g *Game) chooseBoard(size int) {
 	g.correctFlashX = -1
 	g.correctFlashY = -1
 	g.strokeState = nonogram.CellEmpty
+	g.editorPreview = false
 }
 
 func (g *Game) elapsed() time.Duration {

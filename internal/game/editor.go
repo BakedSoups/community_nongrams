@@ -19,6 +19,13 @@ const (
 	editorModeSolution
 )
 
+type editorLayer uint8
+
+const (
+	editorLayerBefore editorLayer = iota
+	editorLayerAfter
+)
+
 type editorTool uint8
 
 const (
@@ -29,19 +36,23 @@ const (
 )
 
 type editorCell struct {
-	Color   color.RGBA `json:"color"`
-	Visible bool       `json:"visible"`
-	Filled  bool       `json:"filled"`
+	Color         color.RGBA `json:"color"`
+	Visible       bool       `json:"visible"`
+	BeforeColor   color.RGBA `json:"beforeColor"`
+	BeforeVisible bool       `json:"beforeVisible"`
+	Filled        bool       `json:"filled"`
 }
 
 type editorState struct {
-	Width      int          `json:"width"`
-	Height     int          `json:"height"`
-	Title      string       `json:"title"`
-	Cells      []editorCell `json:"cells"`
-	PaintColor color.RGBA   `json:"paintColor"`
-	Mode       editorMode   `json:"mode"`
-	Tool       editorTool   `json:"tool"`
+	Width           int          `json:"width"`
+	Height          int          `json:"height"`
+	Title           string       `json:"title"`
+	Cells           []editorCell `json:"cells"`
+	PaintColor      color.RGBA   `json:"paintColor"`
+	AfterPaintColor color.RGBA   `json:"afterPaintColor"`
+	Mode            editorMode   `json:"mode"`
+	Tool            editorTool   `json:"tool"`
+	Layer           editorLayer  `json:"layer"`
 }
 
 type editorImportCell struct {
@@ -72,13 +83,15 @@ func newEditorState(size int) editorState {
 	}
 	cells := make([]editorCell, size*size)
 	return editorState{
-		Width:      size,
-		Height:     size,
-		Title:      fmt.Sprintf("Editor %dx%d", size, size),
-		Cells:      cells,
-		PaintColor: color.RGBA{72, 92, 121, 255},
-		Mode:       editorModeArt,
-		Tool:       editorToolPencil,
+		Width:           size,
+		Height:          size,
+		Title:           fmt.Sprintf("Editor %dx%d", size, size),
+		Cells:           cells,
+		PaintColor:      color.RGBA{86, 115, 134, 255},
+		AfterPaintColor: color.RGBA{86, 115, 134, 255},
+		Mode:            editorModeArt,
+		Tool:            editorToolPencil,
+		Layer:           editorLayerAfter,
 	}
 }
 
@@ -109,6 +122,22 @@ func editorFromPackJSON(raw string) (editorState, error) {
 					continue
 				}
 				state.Cells[state.index(x, y)] = editorCell{Color: c, Visible: c.A > 0}
+			}
+		}
+	}
+	if len(p.SkeletonRaw) == p.Height {
+		for y, row := range p.SkeletonRaw {
+			for x, value := range row {
+				if x >= p.Width || value == "" || value == "transparent" {
+					continue
+				}
+				c, ok := parseEditorHexColor(value)
+				if !ok {
+					continue
+				}
+				cell := &state.Cells[state.index(x, y)]
+				cell.BeforeColor = editorBeforeColor
+				cell.BeforeVisible = c.A > 0
 			}
 		}
 	}
@@ -152,14 +181,12 @@ func (e *editorState) apply(x, y int) {
 	}
 	switch e.Tool {
 	case editorToolPencil:
-		cell.Color = e.PaintColor
-		cell.Visible = true
+		e.setLayerPixel(cell, e.PaintColor, true)
 	case editorToolEraser:
-		cell.Visible = false
-		cell.Filled = false
+		e.setLayerPixel(cell, color.RGBA{}, false)
 	case editorToolEyedropper:
-		if cell.Visible {
-			e.PaintColor = cell.Color
+		if c, visible := e.layerPixel(cell); visible {
+			e.selectPaintColor(c)
 			e.Tool = editorToolPencil
 		}
 	case editorToolFill:
@@ -203,8 +230,7 @@ func (e *editorState) fillArt(startX, startY int) {
 	if start == nil {
 		return
 	}
-	targetColor := start.Color
-	targetVisible := start.Visible
+	targetColor, targetVisible := e.layerPixel(start)
 	if targetVisible && sameRGBA(targetColor, e.PaintColor) {
 		return
 	}
@@ -218,13 +244,55 @@ func (e *editorState) fillArt(startX, startY int) {
 		}
 		seen[p] = true
 		cell := e.cell(p[0], p[1])
-		if cell.Visible != targetVisible || (targetVisible && !sameRGBA(cell.Color, targetColor)) {
+		cellColor, cellVisible := e.layerPixel(cell)
+		if cellVisible != targetVisible || (targetVisible && !sameRGBA(cellColor, targetColor)) {
 			continue
 		}
-		cell.Color = e.PaintColor
-		cell.Visible = true
+		e.setLayerPixel(cell, e.PaintColor, true)
 		queue = append(queue, [2]int{p[0] + 1, p[1]}, [2]int{p[0] - 1, p[1]}, [2]int{p[0], p[1] + 1}, [2]int{p[0], p[1] - 1})
 	}
+}
+
+func (e editorState) layerPixel(cell *editorCell) (color.RGBA, bool) {
+	if e.Layer == editorLayerBefore {
+		return cell.BeforeColor, cell.BeforeVisible
+	}
+	return cell.Color, cell.Visible
+}
+
+func (e editorState) setLayerPixel(cell *editorCell, c color.RGBA, visible bool) {
+	if e.Layer == editorLayerBefore {
+		cell.BeforeColor = editorBeforeColor
+		cell.BeforeVisible = visible
+		return
+	}
+	cell.Color = c
+	cell.Visible = visible
+}
+
+func (e *editorState) selectLayer(layer editorLayer) {
+	if layer == editorLayerBefore {
+		if e.Layer == editorLayerAfter {
+			e.AfterPaintColor = e.PaintColor
+		}
+		e.Layer = editorLayerBefore
+		e.PaintColor = editorBeforeColor
+		return
+	}
+	e.Layer = editorLayerAfter
+	if e.AfterPaintColor.A == 0 {
+		e.AfterPaintColor = editorPalette[4]
+	}
+	e.PaintColor = e.AfterPaintColor
+}
+
+func (e *editorState) selectPaintColor(c color.RGBA) {
+	if e.Layer == editorLayerBefore {
+		e.PaintColor = editorBeforeColor
+		return
+	}
+	e.PaintColor = c
+	e.AfterPaintColor = c
 }
 
 func (e *editorState) autoSolutionFromVisible() {
@@ -296,13 +364,14 @@ func (e *editorState) snapToPalette(palette []color.RGBA) {
 	}
 }
 
-func (e editorState) pixelMatrix() [][]assets.PixelCell {
+func (e editorState) pixelMatrix(layer editorLayer) [][]assets.PixelCell {
 	matrix := make([][]assets.PixelCell, e.Height)
 	for y := 0; y < e.Height; y++ {
 		matrix[y] = make([]assets.PixelCell, e.Width)
 		for x := 0; x < e.Width; x++ {
 			cell := e.Cells[e.index(x, y)]
-			matrix[y][x] = assets.PixelCell{Color: cell.Color, Visible: cell.Visible}
+			c, visible := e.pixelForLayer(cell, layer)
+			matrix[y][x] = assets.PixelCell{Color: c, Visible: visible}
 		}
 	}
 	return matrix
@@ -325,19 +394,27 @@ func (e editorState) solutionRows() []string {
 	return rows
 }
 
-func (e editorState) rawPixels() [][]string {
+func (e editorState) rawPixels(layer editorLayer) [][]string {
 	rows := make([][]string, e.Height)
 	for y := 0; y < e.Height; y++ {
 		rows[y] = make([]string, e.Width)
 		for x := 0; x < e.Width; x++ {
 			cell := e.Cells[e.index(x, y)]
-			if !cell.Visible {
+			c, visible := e.pixelForLayer(cell, layer)
+			if !visible {
 				continue
 			}
-			rows[y][x] = fmt.Sprintf("#%02X%02X%02X%02X", cell.Color.R, cell.Color.G, cell.Color.B, cell.Color.A)
+			rows[y][x] = fmt.Sprintf("#%02X%02X%02X%02X", c.R, c.G, c.B, c.A)
 		}
 	}
 	return rows
+}
+
+func (e editorState) pixelForLayer(cell editorCell, layer editorLayer) (color.RGBA, bool) {
+	if layer == editorLayerBefore {
+		return cell.BeforeColor, cell.BeforeVisible
+	}
+	return cell.Color, cell.Visible
 }
 
 func (e editorState) puzzle() *nonogram.Puzzle {
@@ -347,8 +424,8 @@ func (e editorState) puzzle() *nonogram.Puzzle {
 		Width:       e.Width,
 		Height:      e.Height,
 		SolutionRaw: e.solutionRows(),
-		SkeletonRaw: e.rawPixels(),
-		RevealRaw:   e.rawPixels(),
+		SkeletonRaw: e.rawPixels(editorLayerBefore),
+		RevealRaw:   e.rawPixels(editorLayerAfter),
 	}
 	_ = p.ParseSolution()
 	return p
@@ -370,6 +447,26 @@ func (e editorState) packJSON() string {
 	return string(data)
 }
 
+func (e editorState) imageExportJSON() string {
+	payload := editorImportPayload{
+		Width:  e.Width,
+		Height: e.Height,
+		Cells:  make([]editorImportCell, len(e.Cells)),
+	}
+	for i, cell := range e.Cells {
+		c, visible := e.pixelForLayer(cell, editorLayerAfter)
+		if !visible {
+			continue
+		}
+		payload.Cells[i] = editorImportCell{R: c.R, G: c.G, B: c.B, A: c.A}
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
+}
+
 func (e *editorState) importPayload(raw string) error {
 	var payload editorImportPayload
 	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
@@ -378,16 +475,15 @@ func (e *editorState) importPayload(raw string) error {
 	if payload.Width <= 0 || payload.Height <= 0 || len(payload.Cells) != payload.Width*payload.Height {
 		return fmt.Errorf("invalid imported image payload")
 	}
-	e.Width = payload.Width
-	e.Height = payload.Height
-	e.Cells = make([]editorCell, len(payload.Cells))
-	for i, cell := range payload.Cells {
-		e.Cells[i] = editorCell{
-			Color:   color.RGBA{R: cell.R, G: cell.G, B: cell.B, A: cell.A},
-			Visible: cell.A > 20,
-			Filled:  cell.A > 20,
-		}
+	if e.Width != payload.Width || e.Height != payload.Height || len(e.Cells) != len(payload.Cells) {
+		e.Width = payload.Width
+		e.Height = payload.Height
+		e.Cells = make([]editorCell, len(payload.Cells))
 	}
+	for i, cell := range payload.Cells {
+		e.setLayerPixel(&e.Cells[i], color.RGBA{R: cell.R, G: cell.G, B: cell.B, A: cell.A}, cell.A > 20)
+	}
+	e.autoSolutionFromVisible()
 	return nil
 }
 
@@ -441,11 +537,15 @@ func absInt(value int) int {
 }
 
 func parseEditorHexColor(value string) (color.RGBA, bool) {
-	if len(value) != 9 || value[0] != '#' {
+	if (len(value) != 7 && len(value) != 9) || value[0] != '#' {
 		return color.RGBA{}, false
 	}
-	var rgba [4]uint8
-	for i := 0; i < 4; i++ {
+	rgba := [4]uint8{0, 0, 0, 255}
+	partCount := 3
+	if len(value) == 9 {
+		partCount = 4
+	}
+	for i := 0; i < partCount; i++ {
 		n, ok := parseEditorHexByte(value[1+i*2 : 3+i*2])
 		if !ok {
 			return color.RGBA{}, false
@@ -453,6 +553,10 @@ func parseEditorHexColor(value string) (color.RGBA, bool) {
 		rgba[i] = n
 	}
 	return color.RGBA{R: rgba[0], G: rgba[1], B: rgba[2], A: rgba[3]}, true
+}
+
+func editorColorHex(c color.RGBA) string {
+	return fmt.Sprintf("#%02X%02X%02X", c.R, c.G, c.B)
 }
 
 func parseEditorHexByte(value string) (uint8, bool) {
@@ -486,5 +590,6 @@ var editorPalette = []color.RGBA{
 	{86, 115, 134, 255},
 	{100, 132, 97, 255},
 	{235, 194, 92, 255},
-	{98, 76, 128, 255},
 }
+
+var editorBeforeColor = color.RGBA{0, 0, 0, 255}

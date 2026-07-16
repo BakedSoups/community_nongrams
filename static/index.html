@@ -72,19 +72,37 @@
         sound.play();
       }
     };
-    window.downloadEditorPack = (filename, raw) => {
-      const blob = new Blob([raw], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
+    window.downloadEditorImage = (filename, raw) => {
+      const art = JSON.parse(raw);
+      const width = Math.max(1, Number(art.width) || 1);
+      const height = Math.max(1, Number(art.height) || 1);
+      const scale = 32;
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = "#fffdf4";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      (art.cells || []).forEach((cell, index) => {
+        if (!cell || cell.a <= 0) {
+          return;
+        }
+        const x = index % width;
+        const y = Math.floor(index / width);
+        ctx.fillStyle = `rgb(${cell.r}, ${cell.g}, ${cell.b})`;
+        ctx.fillRect(x * scale, y * scale, scale, scale);
+      });
       const link = document.createElement("a");
-      link.href = url;
-      link.download = filename || "pixaross-pack.json";
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.download = filename || "pixaross-art.jpg";
       document.body.appendChild(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(url);
     };
     window.__pendingEditorImageImport = "";
     window.__pendingEditorPackImport = "";
+    window.__pendingEditorColor = "";
     window.takeEditorImageImport = () => {
       const raw = window.__pendingEditorImageImport || "";
       window.__pendingEditorImageImport = "";
@@ -94,6 +112,23 @@
       const raw = window.__pendingEditorPackImport || "";
       window.__pendingEditorPackImport = "";
       return raw;
+    };
+    window.takeEditorColorPicker = () => {
+      const value = window.__pendingEditorColor || "";
+      window.__pendingEditorColor = "";
+      return value;
+    };
+    window.requestEditorColorPicker = (initial) => {
+      const input = document.createElement("input");
+      input.type = "color";
+      input.value = /^#[0-9a-f]{6}$/i.test(initial) ? initial : "#485c79";
+      input.oninput = () => {
+        window.__pendingEditorColor = input.value;
+      };
+      input.onchange = () => {
+        window.__pendingEditorColor = input.value;
+      };
+      input.click();
     };
     window.requestEditorPackImport = () => {
       const input = document.createElement("input");

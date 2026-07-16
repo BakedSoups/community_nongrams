@@ -42,7 +42,8 @@ func (g *Game) updateInput() {
 		g.tool = nonogram.ToolMark
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		g.mode = screenMainMenu
+		g.leavePuzzle()
+		return
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyG) {
 		g.godModeFill()
@@ -73,7 +74,7 @@ func (g *Game) updateInput() {
 			g.godModeFill()
 			return
 		case g.layout.menuButton.Contains(x, y):
-			g.mode = screenMainMenu
+			g.leavePuzzle()
 			return
 		case g.layout.settingsButton.Contains(x, y):
 			g.mode = screenSettings
@@ -142,7 +143,7 @@ func (g *Game) updateRevealInput() {
 		return
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyL) || inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		g.mode = screenLevelSelect
+		g.leaveReveal()
 		return
 	}
 
@@ -155,7 +156,7 @@ func (g *Game) updateRevealInput() {
 		return
 	}
 	if g.layout.revealLevelsButton.Contains(x, y) {
-		g.mode = screenLevelSelect
+		g.leaveReveal()
 	}
 }
 
@@ -188,6 +189,12 @@ func (g *Game) updateCommunityInput() {
 }
 
 func (g *Game) updateEditorInput() {
+	if raw := takeEditorColorPicker(); raw != "" {
+		if c, ok := parseEditorHexColor(raw); ok {
+			g.editor.selectPaintColor(c)
+			g.editor.Tool = editorToolPencil
+		}
+	}
 	if raw := takeEditorImageImport(); raw != "" {
 		g.pushEditorUndo()
 		if err := g.editor.importPayload(raw); err != nil {
@@ -206,6 +213,10 @@ func (g *Game) updateEditorInput() {
 		}
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		if g.editorSizeOpen {
+			g.editorSizeOpen = false
+			return
+		}
 		g.mode = screenMainMenu
 		return
 	}
@@ -230,12 +241,27 @@ func (g *Game) updateEditorInput() {
 		g.editorLastY = -1
 	}
 	if justPressed {
+		if g.editorSizeOpen {
+			if editorSizeButton().Contains(x, y) {
+				g.editorSizeOpen = false
+				return
+			}
+			for _, size := range editorSizes {
+				if editorSizeOption(size).Contains(x, y) {
+					g.resetEditor(size)
+					g.editorSizeOpen = false
+					return
+				}
+			}
+			g.editorSizeOpen = false
+			return
+		}
 		if g.handleEditorButton(x, y) {
 			return
 		}
 		for i, c := range editorPalette {
 			if editorPaletteRect(i).Contains(x, y) {
-				g.editor.PaintColor = c
+				g.editor.selectPaintColor(c)
 				g.editor.Tool = editorToolPencil
 				return
 			}
@@ -268,6 +294,8 @@ func (g *Game) handleEditorButton(x, y int) bool {
 		g.mode = screenMainMenu
 	case editorUndoButton().Contains(x, y):
 		g.undoEditor()
+	case editorSizeButton().Contains(x, y):
+		g.editorSizeOpen = !g.editorSizeOpen
 	case editorPreviewButton().Contains(x, y):
 		g.loadEditorPuzzle()
 	case editorSaveButton().Contains(x, y):
@@ -282,18 +310,20 @@ func (g *Game) handleEditorButton(x, y int) bool {
 		g.editor.Tool = editorToolFill
 	case editorEyeButton().Contains(x, y):
 		g.editor.Tool = editorToolEyedropper
-	case editorImportButton().Contains(x, y):
-		if !requestEditorImageImport(g.editor.Width) {
-			g.showMenuNotice("import unavailable")
+	case editorBeforeButton().Contains(x, y):
+		g.editor.selectLayer(editorLayerBefore)
+	case editorAfterButton().Contains(x, y):
+		g.editor.selectLayer(editorLayerAfter)
+	case editorLayerPreviewButton().Contains(x, y) && g.editor.Layer == editorLayerAfter:
+		g.editorOnionSkin = !g.editorOnionSkin
+	case editorRainbowRect().Contains(x, y):
+		if g.editor.Layer == editorLayerBefore {
+			g.editor.selectPaintColor(editorBeforeColor)
+			break
 		}
-	case editorSize8Button().Contains(x, y):
-		g.resetEditor(8)
-	case editorSize10Button().Contains(x, y):
-		g.resetEditor(10)
-	case editorSize15Button().Contains(x, y):
-		g.resetEditor(15)
-	case editorSize20Button().Contains(x, y):
-		g.resetEditor(20)
+		if !requestEditorColorPicker(editorColorHex(g.editor.PaintColor)) {
+			g.showMenuNotice("color picker unavailable")
+		}
 	default:
 		return false
 	}

@@ -34,10 +34,13 @@ type PixelCell struct {
 }
 
 type UIIcons struct {
-	Home   *ebiten.Image
-	Gear   *ebiten.Image
-	Pencil *ebiten.Image
-	Eraser *ebiten.Image
+	Home       *ebiten.Image
+	Gear       *ebiten.Image
+	Pencil     *ebiten.Image
+	Eraser     *ebiten.Image
+	Fill       *ebiten.Image
+	Eyedropper *ebiten.Image
+	Eye        *ebiten.Image
 }
 
 func LoadPuzzleAssets(puzzlePath string) (*PuzzleAssets, error) {
@@ -163,7 +166,19 @@ func LoadUIIcons() (*UIIcons, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &UIIcons{Home: home, Gear: gear, Pencil: pencil, Eraser: eraser}, nil
+	fill, err := loadImageWithFallback("assets/ui/fill.png")
+	if err != nil {
+		return nil, err
+	}
+	eyedropper, err := loadImageWithFallback("assets/ui/eyedropper.png")
+	if err != nil {
+		return nil, err
+	}
+	eye, err := loadImageWithFallback("assets/ui/eye.png")
+	if err != nil {
+		return nil, err
+	}
+	return &UIIcons{Home: home, Gear: gear, Pencil: pencil, Eraser: eraser, Fill: fill, Eyedropper: eyedropper, Eye: eye}, nil
 }
 
 func resolveAsset(base, path string) string {

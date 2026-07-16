@@ -346,7 +346,11 @@ func (g *Game) drawReveal(screen *ebiten.Image) {
 	}
 
 	drawButton(screen, g.layout.retryButton, "retry puzzle")
-	drawButton(screen, g.layout.revealLevelsButton, "levels")
+	backLabel := "levels"
+	if g.editorPreview {
+		backLabel = "back to editor"
+	}
+	drawButton(screen, g.layout.revealLevelsButton, backLabel)
 }
 
 func drawShineSweep(dst *ebiten.Image, r rect, progress, revealAlpha float64) {

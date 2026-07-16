@@ -27,8 +27,8 @@ func loadEditorPack() string {
 	return raw.String()
 }
 
-func exportEditorPack(filename, raw string) bool {
-	fn := js.Global().Get("downloadEditorPack")
+func exportEditorImage(filename, raw string) bool {
+	fn := js.Global().Get("downloadEditorImage")
 	if fn.IsUndefined() || fn.IsNull() {
 		return false
 	}
@@ -55,6 +55,27 @@ func takeEditorImageImport() string {
 		return ""
 	}
 	return raw.String()
+}
+
+func requestEditorColorPicker(initial string) bool {
+	fn := js.Global().Get("requestEditorColorPicker")
+	if fn.IsUndefined() || fn.IsNull() {
+		return false
+	}
+	fn.Invoke(initial)
+	return true
+}
+
+func takeEditorColorPicker() string {
+	fn := js.Global().Get("takeEditorColorPicker")
+	if fn.IsUndefined() || fn.IsNull() {
+		return ""
+	}
+	value := fn.Invoke()
+	if value.IsUndefined() || value.IsNull() {
+		return ""
+	}
+	return value.String()
 }
 
 func requestEditorPackImport() bool {

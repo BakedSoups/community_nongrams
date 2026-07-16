@@ -10,7 +10,7 @@ func loadEditorPack() string {
 	return ""
 }
 
-func exportEditorPack(string, string) bool {
+func exportEditorImage(string, string) bool {
 	return false
 }
 
@@ -19,6 +19,14 @@ func requestEditorImageImport(int) bool {
 }
 
 func takeEditorImageImport() string {
+	return ""
+}
+
+func requestEditorColorPicker(string) bool {
+	return false
+}
+
+func takeEditorColorPicker() string {
 	return ""
 }
 
