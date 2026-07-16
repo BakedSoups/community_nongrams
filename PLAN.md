@@ -1,255 +1,200 @@
-# Editor And Community Plan
+# Community Creation Plan
 
-## Goal
+## Core Decisions
 
-Add an in-game editor where players can create nonogram picture levels by drawing directly, importing photos, color-correcting them, saving them into packs, and eventually sharing or downloading packs through a community browser backed by Supabase.
+- A single artwork is the fundamental playable level.
+- Packs are ordered collections of versioned levels.
+- Guests can draw, playtest, export JPEGs, and save locally.
+- Login is required for cloud saving, publishing, and official-game submission.
+- Structured level data remains canonical; JPEG is only a personal export or thumbnail.
+- Published versions are immutable.
 
-## Core Model
+## Phase 1: Community Structure
 
-Separate artwork from the puzzle solution.
+- Move the Editor out of the main menu.
+- Add Community navigation for Featured, Levels, Packs, Create, and My Art.
+- Open the editor through Community -> Create.
+- Allow guests to use the editor without creating an account.
+- Preserve local drafts in browser storage.
 
-```go
-type EditorCell struct {
-	Color   color.RGBA
-	Visible bool
-	Filled  bool
-}
+Success means a guest can create, save, refresh, reopen, playtest, and export artwork.
+
+## Phase 2: Level Format
+
+Each saved level contains:
+
+- Before layer using black or transparency only.
+- Full-color After layer.
+- Solution generated from visible After pixels.
+- Width and height.
+- Title and description.
+- Palette and tags.
+- Creator and version information.
+- Visibility and publication status.
+
+Continue supporting `8x8`, `10x10`, `15x15`, and `20x20` puzzles.
+
+## Phase 3: Import Wizard
+
+Add three import modes:
+
+- Single Before/After pair.
+- Regular multi-level grid.
+- Aseprite PNG plus JSON metadata.
+
+Include an in-app Aseprite guide specifying:
+
+- Horizontal sprite-sheet layout for simple pairs.
+- No trim, padding, borders, or smoothing.
+- Transparent background.
+- Matching Before and After dimensions.
+- Black or transparent Before artwork.
+
+For large sheets, let users configure frame size, rows, columns, margins, spacing, and pairing order.
+
+Show detected frames as thumbnails before importing. Allow users to pair, rename, reorder, or remove frames.
+
+Support automatic filename pairing:
+
+```text
+cup_before
+cup_after
+flower_before
+flower_after
 ```
 
-- `Color` and `Visible` define the pixel art reveal.
-- `Filled` defines the actual nonogram solution.
-- This lets imported or hand-drawn art look good without forcing every visible pixel to be part of the puzzle unless desired.
+A large sheet creates multiple drafts and can optionally start a new pack.
 
-## Phase 1: Local Editor
+## Phase 4: Accounts And My Art
 
-Add an `Editor` button on the main menu.
+Use Supabase Auth with email magic links and Google login.
 
-Editor features:
+My Art should contain:
 
-- New puzzle size presets: `8x8`, `10x10`, `15x15`, `20x20`.
-- Pixel grid canvas.
-- Pencil tool.
-- Eraser tool.
-- Fill bucket.
-- Eyedropper.
-- Palette.
-- Undo and redo.
-- Clear and reset.
-- Grid toggle.
-- Preview level.
+- Local drafts.
+- Cloud drafts.
+- Published levels.
+- Pack-only levels.
+- Unlisted levels.
+- Packs.
+- Official submissions.
 
-Editor modes:
+After login, offer to move the current local draft into the user's account.
 
-- `Art`: draw the reveal image.
-- `Solution`: mark which cells are filled.
-- `Preview`: test-play the puzzle.
+Use row-level security so only the owner can edit drafts.
 
-## Phase 2: Solution Tools
+## Phase 5: Single-Level Publishing
 
-Add helpers to turn artwork into a puzzle.
+Before publication, require:
 
-Features:
+- Nonempty After artwork.
+- Valid dimensions.
+- Black-only Before artwork.
+- Completed playtest.
+- Title.
+- Ownership confirmation.
 
-- Generate solution from visible pixels.
-- Generate solution from brightness.
-- Invert solution toggle.
-- Manual solution editing.
-- Warning if solution is empty or fully filled.
-- Optional later: solvability check.
+Publication options:
 
-## Phase 3: Color Corrector
+- Public.
+- Pack only.
+- Unlisted.
 
-Add a color correction panel for drawn or imported art.
+Community cards show the thumbnail, title, creator, dimensions, difficulty, plays, and likes.
 
-Controls:
+## Phase 6: Official Game Submission
 
-- Brightness.
-- Contrast.
-- Saturation.
-- Hue shift.
-- Posterize or reduce color count.
-- Alpha threshold.
-- Replace selected color.
-- Snap to palette.
-- Preserve transparent cells toggle.
+Add an optional publication checkbox:
 
-Apply options:
+> **Consider this level for the main game**
 
-- Apply to whole image.
-- Apply to selected color.
-- Apply to visible cells only.
+Display this explanation:
 
-## Phase 4: Photo Import
+> Submit this level for inspection by the game team. Submission does not guarantee inclusion. We will review its artwork, originality, puzzle quality, and suitability for the official game.
 
-For web builds, add browser file import.
+Require confirmation that the user owns the artwork and permits its use if accepted.
 
-Flow:
+Submission statuses:
 
-1. User selects image.
-2. Crop or fit to square.
-3. Choose grid size.
-4. Downsample image into pixel cells.
-5. Apply color correction.
-6. Auto-generate solution.
-7. Let user hand-edit art and solution.
-
-Photo import controls:
-
-- Crop position.
-- Zoom.
-- Brightness threshold.
-- Alpha or background threshold.
-- Invert.
-- Color count.
-- Preview before accepting.
-
-## Phase 5: Local Packs
-
-Add `My Packs`.
-
-Pack features:
-
-- Create pack.
-- Rename pack.
-- Add editor levels to pack.
-- Rename levels.
-- Reorder levels.
-- Delete levels.
-- Save locally in browser storage.
-- Export pack as JSON.
-- Import pack JSON.
-
-Suggested pack format:
-
-```json
-{
-  "id": "cute_food",
-  "title": "Cute Food",
-  "author": "alex",
-  "version": 1,
-  "levels": [
-    {
-      "id": "l1",
-      "title": "Strawberry",
-      "width": 10,
-      "height": 10,
-      "solution": [],
-      "skeletonPixels": [],
-      "revealPixels": []
-    }
-  ]
-}
+```text
+Submitted
+In review
+Changes requested
+Approved
+Declined
 ```
 
-## Phase 6: Runtime Pack Loading
+Create an immutable review submission linked to the published level version.
 
-Refactor level loading so built-in levels, local packs, imported packs, and community packs all use the same path.
+A server-side function emails the administrator a review-page link. The email should not contain attachments or act as the review database.
 
-Use a common source interface:
+The admin page provides:
 
-```go
-type LevelSource interface {
-	ListPacks() []PackInfo
-	LoadPuzzle(packID string, levelID string) (*Puzzle, error)
-}
+- Before and After previews.
+- Playable puzzle.
+- Creator details.
+- Approve action.
+- Request-changes action.
+- Decline action.
+- Internal review notes.
+
+Approval adds that exact version to the official catalog and notifies the creator.
+
+## Phase 7: Art Packs
+
+Allow creators to select their levels from My Art and create a pack.
+
+Pack editing includes:
+
+- Title, description, tags, and cover.
+- Drag-to-reorder levels.
+- Public, unlisted, or draft visibility.
+- Pack-only levels.
+- Difficulty progression.
+- Pack playtesting.
+
+Pack entries reference immutable level versions. A level can appear in multiple packs.
+
+Track per-user pack progress and completion.
+
+## Phase 8: Moderation And Operations
+
+Add:
+
+- Level and pack reporting.
+- Submission rate limits.
+- Duplicate-submission prevention.
+- Creator blocking.
+- Admin moderation queue.
+- Publication audit history.
+- Content ownership policy.
+- Thumbnail regeneration.
+- Server-side level validation.
+
+## Suggested Database
+
+```text
+profiles
+drafts
+levels
+level_versions
+packs
+pack_versions
+pack_items
+official_submissions
+likes
+play_events
+reports
+notifications
 ```
 
-Sources:
+## Recommended Delivery Order
 
-- Built-in levels.
-- Local saved packs.
-- Imported JSON packs.
-- Downloaded community packs.
-- Supabase community packs.
-
-## Phase 7: Community Browser
-
-Add a `Community` button on the main menu.
-
-Community views:
-
-- Featured.
-- New.
-- Popular.
-- Search.
-- My Uploads.
-
-Pack cards show:
-
-- Cover thumbnail.
-- Pack title.
-- Author.
-- Level count.
-- Likes.
-- Downloads.
-- Play or download button.
-
-Downloaded packs should cache locally.
-
-## Phase 8: Supabase
-
-Use Supabase for auth, pack metadata, uploaded pack JSON, stats, and reports.
-
-Tables:
-
-- `profiles`
-- `packs`
-- `pack_versions`
-- `pack_stats`
-- `reports`
-
-Storage buckets:
-
-- `pack-covers`
-- Optional `source-images`.
-
-Pack status:
-
-- `draft`
-- `published`
-- `hidden`
-- `removed`
-
-## Phase 9: Upload Flow
-
-From editor:
-
-1. Validate pack.
-2. Require sign-in.
-3. Upload pack JSON.
-4. Generate and upload cover thumbnail.
-5. Publish pack.
-6. Show it in Community.
-
-Validation:
-
-- Max pack size.
-- Max level count.
-- Valid puzzle dimensions.
-- Non-empty solution.
-- No fully-filled solution unless allowed.
-- Safe title and description length.
-
-## Phase 10: Moderation
-
-Minimum moderation:
-
-- Report button.
-- Admin hide and remove.
-- Upload rate limits.
-- Max JSON and image size.
-- Basic profanity filter.
-- No external image URLs in public packs.
-
-## Recommended Build Order
-
-1. Local editor grid and drawing tools.
-2. Art and solution separation.
-3. Preview-play editor puzzle.
-4. Local save, export, and import packs.
-5. Photo import.
-6. Color corrector.
-7. Dynamic pack loading.
-8. Community browser read-only.
-9. Supabase upload and login.
-10. Likes, reports, moderation, and polish.
+1. Community navigation and local creation.
+2. Canonical level format and validation.
+3. Aseprite and large-sheet importer.
+4. Authentication and My Art.
+5. Single-level publishing and Community browsing.
+6. Official submission and admin review.
+7. Packs and saved progression.
+8. Moderation, reporting, and operational tooling.

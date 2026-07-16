@@ -2,6 +2,38 @@
 
 package game
 
+func saveCommunityProfile(string) bool { return false }
+
+func loadCommunityProfile() string { return "" }
+
+func communityAccountLabel() string { return "Sign in" }
+
+func saveCommunityData(string) bool { return false }
+
+func loadCommunityData() string { return "" }
+
+func requestCommunityImport() bool { return false }
+
+func takeCommunityImport() string { return "" }
+
+func requestCommunitySignIn() bool { return false }
+
+func requestCommunityPublish(string) bool { return false }
+
+func requestCommunityPackPublish(string) bool { return false }
+
+func takeCommunityResult() string { return "" }
+
+func requestCommunityCatalog(string) bool { return false }
+
+func takeCommunityCatalog() string { return "" }
+
+func syncCommunityDraft(string) {}
+
+func requestCommunityCloudDrafts() bool { return false }
+
+func takeCommunityCloudDrafts() string { return "" }
+
 func saveEditorPack(string) bool {
 	return false
 }
@@ -29,6 +61,10 @@ func requestEditorColorPicker(string) bool {
 func takeEditorColorPicker() string {
 	return ""
 }
+
+func requestEditorTitle(string) bool { return false }
+
+func takeEditorTitle() string { return "" }
 
 func requestEditorPackImport() bool {
 	return false

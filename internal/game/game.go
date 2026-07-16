@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alex/nongrampictures/internal/assets"
+	"github.com/alex/nongrampictures/internal/community"
 	"github.com/alex/nongrampictures/internal/nonogram"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -62,15 +63,28 @@ type Game struct {
 	menuNoticeUntil time.Time
 	levelPage       int
 
-	editor          editorState
-	editorUndo      []editorState
-	editorPointer   bool
-	editorLastX     int
-	editorLastY     int
-	editorSizeOpen  bool
-	editorPreview   bool
-	editorOnionSkin bool
-	communityNotice string
+	editor           editorState
+	editorUndo       []editorState
+	editorPointer    bool
+	editorLastX      int
+	editorLastY      int
+	editorSizeOpen   bool
+	editorPreview    bool
+	communityPreview bool
+	editorOnionSkin  bool
+	currentDraftID   string
+	profileArt       editorState
+	profileReturn    editorState
+	profileDraftID   string
+	editingProfile   bool
+
+	communityLibrary     community.Library
+	communityView        communityView
+	communityPage        int
+	communityCatalog     []community.LevelVersion
+	activeCommunityPack  string
+	communityNotice      string
+	communityNoticeUntil time.Time
 }
 
 type sparkle struct {
@@ -91,29 +105,31 @@ func New(puzzlePath string) (*Game, error) {
 	}
 
 	g := &Game{
-		puzzle:         loaded.Puzzle,
-		board:          nonogram.NewBoard(loaded.Puzzle.Width, loaded.Puzzle.Height),
-		rowClues:       nonogram.RowClues(loaded.Puzzle.Solution),
-		colClues:       nonogram.ColumnClues(loaded.Puzzle.Solution),
-		skeleton:       loaded.Skeleton,
-		reveal:         loaded.Reveal,
-		skeletonPixels: loaded.SkeletonPixels,
-		revealPixels:   loaded.RevealPixels,
-		icons:          icons,
-		lastCellX:      -1,
-		lastCellY:      -1,
-		correctFlashX:  -1,
-		correctFlashY:  -1,
-		startTime:      time.Now(),
-		revealStart:    time.Now(),
-		audioEnabled:   true,
-		autoCorrect:    true,
-		mode:           screenMainMenu,
-		bestTimes:      loadBestTimes(),
-		levelThumbs:    loadLevelThumbs(),
-		editor:         initialEditor(),
-		editorLastX:    -1,
-		editorLastY:    -1,
+		puzzle:           loaded.Puzzle,
+		board:            nonogram.NewBoard(loaded.Puzzle.Width, loaded.Puzzle.Height),
+		rowClues:         nonogram.RowClues(loaded.Puzzle.Solution),
+		colClues:         nonogram.ColumnClues(loaded.Puzzle.Solution),
+		skeleton:         loaded.Skeleton,
+		reveal:           loaded.Reveal,
+		skeletonPixels:   loaded.SkeletonPixels,
+		revealPixels:     loaded.RevealPixels,
+		icons:            icons,
+		lastCellX:        -1,
+		lastCellY:        -1,
+		correctFlashX:    -1,
+		correctFlashY:    -1,
+		startTime:        time.Now(),
+		revealStart:      time.Now(),
+		audioEnabled:     true,
+		autoCorrect:      true,
+		mode:             screenMainMenu,
+		bestTimes:        loadBestTimes(),
+		levelThumbs:      loadLevelThumbs(),
+		editor:           initialEditor(),
+		profileArt:       initialProfileArt(),
+		communityLibrary: loadCommunityLibrary(),
+		editorLastX:      -1,
+		editorLastY:      -1,
 	}
 	g.sparkles = makeSparkles()
 	return g, nil
@@ -126,6 +142,18 @@ func initialEditor() editorState {
 		}
 	}
 	return newEditorState(10)
+}
+
+func initialProfileArt() editorState {
+	if saved := loadCommunityProfile(); saved != "" {
+		if editor, err := editorFromPackJSON(saved); err == nil && editor.Width == 10 && editor.Height == 10 {
+			editor.selectLayer(editorLayerAfter)
+			return editor
+		}
+	}
+	profile := newEditorState(10)
+	profile.Title = "Profile"
+	return profile
 }
 
 func loadBestTimes() map[string]time.Duration {
@@ -230,6 +258,7 @@ func (g *Game) loadPuzzle(path string) error {
 	g.correctFlashY = -1
 	g.strokeState = nonogram.CellEmpty
 	g.editorPreview = false
+	g.communityPreview = false
 	g.mode = screenPuzzle
 	return nil
 }
@@ -285,7 +314,7 @@ func (g *Game) resetEditor(size int) {
 }
 
 func (g *Game) saveEditor() {
-	if saveEditorPack(g.editor.packJSON()) {
+	if g.saveCurrentDraft(false) == nil {
 		g.showMenuNotice("saved")
 		return
 	}
@@ -306,6 +335,16 @@ func (g *Game) leavePuzzle() {
 		g.mode = screenEditor
 		return
 	}
+	if g.communityPreview {
+		g.communityPreview = false
+		if g.activeCommunityPack != "" {
+			g.communityView = communityPacks
+		} else {
+			g.communityView = communityBrowse
+		}
+		g.mode = screenCommunity
+		return
+	}
 	g.mode = screenMainMenu
 }
 
@@ -313,6 +352,16 @@ func (g *Game) leaveReveal() {
 	if g.editorPreview {
 		g.editorPreview = false
 		g.mode = screenEditor
+		return
+	}
+	if g.communityPreview {
+		g.communityPreview = false
+		if g.activeCommunityPack != "" {
+			g.communityView = communityPacks
+		} else {
+			g.communityView = communityBrowse
+		}
+		g.mode = screenCommunity
 		return
 	}
 	g.mode = screenLevelSelect
@@ -404,6 +453,12 @@ func (g *Game) completePuzzle() {
 		}
 	}
 	g.mode = screenReveal
+	if g.editorPreview {
+		_ = g.saveCurrentDraft(true)
+	}
+	if g.activeCommunityPack != "" && g.puzzle != nil {
+		g.completeCommunityPackLevel(g.puzzle.ID)
+	}
 	g.revealStart = time.Now()
 	playWebSFX("complete")
 }

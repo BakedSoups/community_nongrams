@@ -47,6 +47,38 @@ go run ./cmd/genlevels
 
 This writes self-contained `puzzle.json` files under `assets/puzzles/` and `internal/assets/embedded/assets/puzzles/`. No split skeleton/reveal images are generated.
 
+## Community Editor
+
+Open **Community > Create**. Guest drawings and packs are saved in browser local storage, and **My Art** keeps multiple editable drafts. A level must be completed through **Play** before it can be published. Publishing asks for title, description, tags, and whether the creator wants the level inspected for possible inclusion in the main game. Main-game submission is optional, requires a rights confirmation, and does not guarantee approval.
+
+### Import From Aseprite
+
+For the most reliable multi-level import, export the sprite sheet as PNG and enable Aseprite's JSON data export. Name paired frames with the same base name:
+
+```text
+flower_before
+flower_after
+lion_before
+lion_after
+```
+
+Select the PNG and JSON together from **Community > Create > Import Sprite Sheet**. Frames must be square and 8, 10, 15, or 20 pixels. The importer turns every matching `_before` / `_after` pair into a separate draft. Before art is normalized to black and determines the nonogram solution; After art keeps its colors.
+
+For a regular PNG without JSON, arrange any number of pairs horizontally (`Before, After`) or vertically (`Before` above `After`). The image dimensions must be exact multiples of the selected tile size. A single 1x2 pair works through the same importer.
+
+### Community Backend
+
+The app remains fully usable for guests without a backend. To enable accounts and publishing:
+
+1. Create a Supabase project and apply `supabase/migrations/001_community.sql`.
+2. Copy `static/config.example.js` to `static/config.js` and set the project URL and public anon key. Do not put a service-role key in `static/`.
+3. Add the game URL to Supabase Auth redirect URLs and enable email magic links.
+4. Deploy `supabase/functions/notify-official-submission` and set `WEBHOOK_SECRET`, `RESEND_API_KEY`, `REVIEW_EMAIL`, `REVIEW_FROM_EMAIL`, and `ADMIN_REVIEW_URL`.
+5. Create a Supabase Database Webhook for inserts on `official_submissions`, targeting that Edge Function with the matching `x-webhook-secret` header.
+6. Set reviewer profiles to `moderator` or `admin` with a trusted SQL/admin operation. Review submissions at `/admin.html` after signing in through the game.
+
+Published level versions are immutable. Packs reference exact versions, user data is protected by row-level security, and review emails contain an admin link rather than artwork attachments.
+
 ## Checks
 
 Local checks:

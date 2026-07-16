@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pixaross Review</title>
+  <style>
+    body { margin: 0; background: #e9e3d7; color: #363431; font: 15px system-ui, sans-serif; }
+    header, main { max-width: 920px; margin: auto; padding: 24px; }
+    header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #5a554e; }
+    h1 { margin: 0; font-size: 24px; letter-spacing: 0; }
+    button, select, textarea { border: 2px solid #5a554e; border-radius: 4px; background: #fffdf4; color: inherit; padding: 9px 12px; font: inherit; }
+    button { cursor: pointer; }
+    article { display: grid; grid-template-columns: 1fr 160px; gap: 16px; padding: 18px 0; border-bottom: 2px solid #b6ad9e; }
+    h2 { margin: 0 0 8px; font-size: 18px; }
+    textarea { width: 100%; min-height: 64px; box-sizing: border-box; resize: vertical; }
+    .actions { display: grid; gap: 8px; align-content: start; }
+    #message { color: #95533f; }
+    @media (max-width: 620px) { article { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header><h1>Main Game Review</h1><button id="refresh">Refresh</button></header>
+  <main><p id="message">Loading submissions...</p><section id="list"></section></main>
+  <script src="config.js"></script>
+  <script>
+    const session = JSON.parse(localStorage.getItem("pixaross.community.session") || "null");
+    const message = document.getElementById("message");
+    const list = document.getElementById("list");
+    const headers = () => ({
+      apikey: window.SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session?.access_token || window.SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json"
+    });
+    async function review(id, status, note) {
+      const response = await fetch(`${window.SUPABASE_URL}/rest/v1/rpc/review_official_submission`, {
+        method: "POST", headers: headers(), body: JSON.stringify({ p_submission_id: id, p_status: status, p_note: note })
+      });
+      if (!response.ok) throw new Error((await response.json()).message || "Review failed");
+      await load();
+    }
+    async function load() {
+      if (!session?.access_token) { message.textContent = "Sign in through the game with an admin account first."; return; }
+      const response = await fetch(`${window.SUPABASE_URL}/rest/v1/official_submissions?select=id,status,created_at,reviewer_note,levels(title),level_versions(puzzle)&order=created_at.desc`, { headers: headers() });
+      const rows = await response.json();
+      if (!response.ok) { message.textContent = rows.message || "Admin access required."; return; }
+      message.textContent = rows.length ? `${rows.length} submission(s)` : "No submissions.";
+      list.replaceChildren(...rows.map((row) => {
+        const article = document.createElement("article");
+        const content = document.createElement("div");
+        const heading = document.createElement("h2");
+        heading.textContent = row.levels?.title || "Untitled level";
+        const meta = document.createElement("p");
+        meta.textContent = `${row.status.replaceAll("_", " ")} · ${new Date(row.created_at).toLocaleString()}`;
+        const note = document.createElement("textarea");
+        note.placeholder = "Reviewer note";
+        note.value = row.reviewer_note || "";
+        content.append(heading, meta, note);
+        const actions = document.createElement("div");
+        actions.className = "actions";
+        ["in_review", "changes_requested", "approved", "declined"].forEach((status) => {
+          const button = document.createElement("button");
+          button.textContent = status.replaceAll("_", " ");
+          button.onclick = () => review(row.id, status, note.value).catch((error) => message.textContent = error.message);
+          actions.append(button);
+        });
+        article.append(content, actions);
+        return article;
+      }));
+    }
+    document.getElementById("refresh").onclick = load;
+    load();
+  </script>
+</body>
+</html>

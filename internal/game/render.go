@@ -539,7 +539,6 @@ func (g *Game) drawMainMenu(screen *ebiten.Image) {
 	drawMenuBackdrop(screen)
 	drawScaledTextCentered(screen, "PIXAROSS", rect{x: 76, y: 46, w: 388, h: 52}, 2.25, colInk)
 	drawButton(screen, mainLevelButton(), "Level Select")
-	drawButton(screen, mainEditorButton(), "Editor")
 	drawButton(screen, mainCommunityButton(), "Community")
 	drawButton(screen, mainSettingsButton(), "Settings")
 	if time.Now().Before(g.menuNoticeUntil) {
@@ -551,16 +550,12 @@ func mainLevelButton() rect {
 	return rect{x: 128, y: 284, w: 284, h: 46}
 }
 
-func mainEditorButton() rect {
-	return rect{x: 128, y: 346, w: 284, h: 46}
-}
-
 func mainCommunityButton() rect {
-	return rect{x: 128, y: 408, w: 284, h: 46}
+	return rect{x: 128, y: 354, w: 284, h: 46}
 }
 
 func mainSettingsButton() rect {
-	return rect{x: 128, y: 470, w: 284, h: 46}
+	return rect{x: 128, y: 424, w: 284, h: 46}
 }
 
 func (g *Game) drawLevelSelect(screen *ebiten.Image) {

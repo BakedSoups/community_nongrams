@@ -168,9 +168,8 @@ func (g *Game) updateMainMenuInput() {
 	switch {
 	case mainLevelButton().Contains(x, y):
 		g.mode = screenLevelSelect
-	case mainEditorButton().Contains(x, y):
-		g.mode = screenEditor
 	case mainCommunityButton().Contains(x, y):
+		g.communityView = communityHome
 		g.mode = screenCommunity
 	case mainSettingsButton().Contains(x, y):
 		g.mode = screenSettings
@@ -178,17 +177,132 @@ func (g *Game) updateMainMenuInput() {
 }
 
 func (g *Game) updateCommunityInput() {
+	if raw := takeCommunityCloudDrafts(); raw != "" {
+		if err := g.mergeCloudDrafts(raw); err != nil {
+			g.showCommunityNotice("could not sync cloud drafts")
+		}
+	}
+	if raw := takeCommunityCatalog(); raw != "" {
+		if err := g.loadCommunityCatalog(raw); err != nil {
+			g.showCommunityNotice("could not load community levels")
+		}
+	}
+	if result := takeCommunityResult(); result != "" {
+		g.showCommunityNotice(result)
+	}
+	if raw := takeCommunityImport(); raw != "" {
+		if err := g.importCommunityPack(raw); err != nil {
+			g.showCommunityNotice("import failed: " + err.Error())
+		}
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		g.mode = screenMainMenu
+		g.communityBack()
 		return
 	}
 	x, y, _, justPressed, _ := pointerState()
-	if justPressed && communityBackButton().Contains(x, y) {
-		g.mode = screenMainMenu
+	if !justPressed {
+		return
+	}
+	if communityBackButton().Contains(x, y) {
+		g.communityBack()
+		return
+	}
+	if communityProfileBadgeButton().Contains(x, y) {
+		g.openProfileEditor()
+		return
+	}
+	if communityAccountButton().Contains(x, y) {
+		if !requestCommunitySignIn() {
+			g.showCommunityNotice("sign in is available in the web build")
+		}
+		return
+	}
+	switch g.communityView {
+	case communityHome:
+		switch {
+		case communityLevelsButton().Contains(x, y):
+			g.communityView = communityBrowse
+			g.communityPage = 0
+			requestCommunityCatalog("levels")
+		case communityPacksButton().Contains(x, y):
+			g.communityView = communityPacks
+		case communityCreateButton().Contains(x, y):
+			g.communityView = communityCreate
+		case communityMyArtButton().Contains(x, y):
+			g.communityView = communityMyArt
+			g.communityPage = 0
+			g.syncLocalDrafts()
+			requestCommunityCloudDrafts()
+		}
+	case communityCreate:
+		switch {
+		case communityNewButton().Contains(x, y):
+			g.newCommunityDraft(10)
+		case communityImportButton().Contains(x, y):
+			if !requestCommunityImport() {
+				g.showCommunityNotice("import is available in the web build")
+			}
+		case communityCreateMyArtButton().Contains(x, y):
+			g.communityView = communityMyArt
+			g.communityPage = 0
+			g.syncLocalDrafts()
+			requestCommunityCloudDrafts()
+		}
+	case communityMyArt:
+		start := g.communityPage * communityDraftsPerPage
+		for slot := 0; slot < communityDraftsPerPage; slot++ {
+			if communityDraftEditButton(slot).Contains(x, y) {
+				g.editCommunityDraft(start + slot)
+				return
+			}
+			if communityDraftPublishButton(slot).Contains(x, y) {
+				g.publishCommunityDraft(start + slot)
+				return
+			}
+		}
+		if communityPrevButton().Contains(x, y) && g.communityPage > 0 {
+			g.communityPage--
+		}
+		if communityNextButton().Contains(x, y) && (g.communityPage+1)*communityDraftsPerPage < len(g.communityLibrary.Drafts) {
+			g.communityPage++
+		}
+	case communityBrowse:
+		for slot := 0; slot < communityCatalogPerPage; slot++ {
+			if communityCatalogPlayButton(slot).Contains(x, y) {
+				g.playCommunityVersion(g.communityPage*communityCatalogPerPage + slot)
+				return
+			}
+		}
+	case communityPacks:
+		if communityPackCreateButton().Contains(x, y) {
+			g.createLocalPack()
+		}
+		for slot := 0; slot < 4; slot++ {
+			if communityPackPlayButton(slot).Contains(x, y) {
+				g.playLocalPack(slot)
+				return
+			}
+			if communityPackPublishButton(slot).Contains(x, y) {
+				g.publishLocalPack(slot)
+				return
+			}
+		}
 	}
 }
 
+func (g *Game) communityBack() {
+	if g.communityView == communityHome {
+		g.mode = screenMainMenu
+		return
+	}
+	g.communityView = communityHome
+}
+
 func (g *Game) updateEditorInput() {
+	if title := takeEditorTitle(); title != "" {
+		g.editor.Title = title
+		_ = g.saveCurrentDraft(false)
+	}
 	if raw := takeEditorColorPicker(); raw != "" {
 		if c, ok := parseEditorHexColor(raw); ok {
 			g.editor.selectPaintColor(c)
@@ -217,7 +331,13 @@ func (g *Game) updateEditorInput() {
 			g.editorSizeOpen = false
 			return
 		}
-		g.mode = screenMainMenu
+		if g.editingProfile {
+			g.closeProfileEditor(false)
+			return
+		}
+		_ = g.saveCurrentDraft(false)
+		g.communityView = communityCreate
+		g.mode = screenCommunity
 		return
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyZ) {
@@ -289,13 +409,28 @@ func (g *Game) updateEditorInput() {
 }
 
 func (g *Game) handleEditorButton(x, y int) bool {
+	if g.editingProfile {
+		switch {
+		case editorBackButton().Contains(x, y):
+			g.closeProfileEditor(false)
+		case profileSaveButton().Contains(x, y):
+			g.closeProfileEditor(true)
+		default:
+			return false
+		}
+		return true
+	}
 	switch {
 	case editorBackButton().Contains(x, y):
-		g.mode = screenMainMenu
+		_ = g.saveCurrentDraft(false)
+		g.communityView = communityMyArt
+		g.mode = screenCommunity
 	case editorUndoButton().Contains(x, y):
 		g.undoEditor()
 	case editorSizeButton().Contains(x, y):
 		g.editorSizeOpen = !g.editorSizeOpen
+	case editorTitleButton().Contains(x, y):
+		requestEditorTitle(g.editor.Title)
 	case editorPreviewButton().Contains(x, y):
 		g.loadEditorPuzzle()
 	case editorSaveButton().Contains(x, y):

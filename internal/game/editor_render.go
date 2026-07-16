@@ -12,17 +12,32 @@ import (
 
 func (g *Game) drawEditor(screen *ebiten.Image) {
 	screen.Fill(colPanel)
-	drawScaledTextCentered(screen, "DRAW", rect{x: 150, y: 22, w: 240, h: 42}, 1.85, colInk)
+	heading := "DRAW"
+	if g.editingProfile {
+		heading = "PROFILE"
+	}
+	drawScaledTextCentered(screen, heading, rect{x: 150, y: 22, w: 240, h: 42}, 1.85, colInk)
 	drawButton(screen, editorBackButton(), "back")
 	drawButton(screen, editorUndoButton(), "undo")
-	drawButton(screen, editorSizeButton(), fmt.Sprintf("%dx%d v", g.editor.Width, g.editor.Height))
+	if !g.editingProfile {
+		drawButton(screen, editorSizeButton(), fmt.Sprintf("%dx%d v", g.editor.Width, g.editor.Height))
+		title := g.editor.Title
+		if len(title) > 18 {
+			title = title[:18]
+		}
+		drawButton(screen, editorTitleButton(), title)
+	}
 
 	g.drawEditorGrid(screen)
 	g.drawEditorToolbar(screen)
 	g.drawEditorPalette(screen)
-	g.drawEditorLayers(screen)
-	g.drawEditorActions(screen)
-	if g.editorSizeOpen {
+	if g.editingProfile {
+		drawButton(screen, profileSaveButton(), "save profile")
+	} else {
+		g.drawEditorLayers(screen)
+		g.drawEditorActions(screen)
+	}
+	if g.editorSizeOpen && !g.editingProfile {
 		g.drawEditorSizeMenu(screen)
 	}
 
@@ -176,18 +191,6 @@ func isEditorPaletteColor(c color.RGBA) bool {
 	return false
 }
 
-func (g *Game) drawCommunity(screen *ebiten.Image) {
-	drawMenuBackdrop(screen)
-	drawScaledTextCentered(screen, "COMMUNITY", rect{x: 76, y: 46, w: 388, h: 52}, 2.1, colInk)
-	panel := rect{x: 56, y: 226, w: 428, h: 336}
-	drawRounded(screen, panel, 8, colWhite)
-	drawRectOutline(screen, panel, 3, colGridHeavy)
-	drawCenteredText(screen, "Pack browser scaffold", rect{x: panel.x, y: panel.y + 36, w: panel.w, h: 28}, colInk)
-	drawCenteredText(screen, communityFetchStatus(), rect{x: panel.x + 24, y: panel.y + 116, w: panel.w - 48, h: 42}, colMuted)
-	drawCenteredText(screen, "Supabase tables: profiles, packs, pack_versions, pack_stats, reports", rect{x: panel.x + 22, y: panel.y + 190, w: panel.w - 44, h: 42}, colMuted)
-	drawButton(screen, communityBackButton(), "back")
-}
-
 func modeLabel(label string, active bool) string {
 	if active {
 		return "[" + label + "]"
@@ -224,6 +227,7 @@ func editorCellAt(e editorState, px, py int) (int, int, bool) {
 func editorBackButton() rect   { return rect{x: 24, y: 24, w: 82, h: 38} }
 func editorUndoButton() rect   { return rect{x: 116, y: 24, w: 82, h: 38} }
 func editorSizeButton() rect   { return rect{x: 404, y: 24, w: 112, h: 38} }
+func editorTitleButton() rect  { return rect{x: 176, y: 68, w: 188, h: 26} }
 func editorPencilButton() rect { return rect{x: 108, y: 542, w: 64, h: 48} }
 func editorEraserButton() rect { return rect{x: 195, y: 542, w: 64, h: 48} }
 func editorFillButton() rect   { return rect{x: 282, y: 542, w: 64, h: 48} }
@@ -236,8 +240,7 @@ func editorLayerPreviewButton() rect {
 func editorSaveButton() rect    { return rect{x: 60, y: 700, w: 130, h: 38} }
 func editorExportButton() rect  { return rect{x: 205, y: 700, w: 130, h: 38} }
 func editorPreviewButton() rect { return rect{x: 350, y: 700, w: 130, h: 38} }
-func communityBackButton() rect { return rect{x: 202, y: 650, w: 136, h: 42} }
-
+func profileSaveButton() rect   { return rect{x: 174, y: 680, w: 192, h: 44} }
 func editorPaletteRect(index int) rect {
 	return rect{x: 48 + float64(index)*56, y: 603, w: 36, h: 36}
 }
