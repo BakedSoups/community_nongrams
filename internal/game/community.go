@@ -214,7 +214,7 @@ func (g *Game) importCommunityPack(raw string) error {
 	return nil
 }
 
-func (g *Game) publishCommunityDraft(index int) {
+func (g *Game) queueCommunityDraftPublish(index int) {
 	if index < 0 || index >= len(g.communityLibrary.Drafts) {
 		return
 	}
@@ -226,6 +226,16 @@ func (g *Game) publishCommunityDraft(index int) {
 	if !communitySignedIn() {
 		g.communityView = communitySignIn
 		g.showCommunityNotice("sign in to publish")
+		return
+	}
+	g.pendingPublishID = draft.ID
+	g.pendingPublishAt = time.Now().Add(100 * time.Millisecond)
+	g.showCommunityNotice("publishing " + draft.Title + "...")
+}
+
+func (g *Game) publishCommunityDraft(id string) {
+	draft, ok := g.communityLibrary.Draft(id)
+	if !ok {
 		return
 	}
 	raw, err := json.Marshal(draft)

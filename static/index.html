@@ -187,7 +187,7 @@
 	  try {
 	    const draft = JSON.parse(raw);
 	    const title = prompt("Level title:", draft.title || "Untitled");
-	    if (!title) return;
+	    if (!title) return setCommunityResult("publish cancelled");
 	    const description = prompt("Short description (optional):", draft.description || "") || "";
 	    const tags = (prompt("Tags, separated by commas (optional):", (draft.tags || []).join(", ")) || "")
 	      .split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 8);

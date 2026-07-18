@@ -178,6 +178,12 @@ func (g *Game) updateMainMenuInput() {
 }
 
 func (g *Game) updateCommunityInput() {
+	if g.pendingPublishID != "" && !time.Now().Before(g.pendingPublishAt) {
+		id := g.pendingPublishID
+		g.pendingPublishID = ""
+		g.publishCommunityDraft(id)
+		return
+	}
 	if id := takeCommunityPublishedID(); id != "" {
 		g.markCommunityDraftPublished(id)
 	}
@@ -296,7 +302,7 @@ func (g *Game) updateCommunityInput() {
 				return
 			}
 			if communityDraftPublishButton(slot).Contains(x, y) {
-				g.publishCommunityDraft(start + slot)
+				g.queueCommunityDraftPublish(start + slot)
 				return
 			}
 			if communityDraftDeleteButton(slot).Contains(x, y) {

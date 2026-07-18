@@ -384,9 +384,17 @@ func (g *Game) drawCommunityMyArt(screen *ebiten.Image) {
 		if status == "" {
 			status = "draft"
 		}
-		drawText(screen, fmt.Sprintf("%dx%d %s", draft.Puzzle.Width, draft.Puzzle.Height, status), int(r.x+116), int(r.y+43), colMuted)
+		statusText := fmt.Sprintf("%dx%d %s", draft.Puzzle.Width, draft.Puzzle.Height, status)
+		if g.pendingPublishID == draft.ID {
+			statusText = "publishing"
+		}
+		drawText(screen, statusText, int(r.x+116), int(r.y+43), colMuted)
 		drawButton(screen, communityDraftEditButton(slot), "edit")
-		drawButton(screen, communityDraftPublishButton(slot), "pub")
+		publishLabel := "pub"
+		if g.pendingPublishID == draft.ID {
+			publishLabel = "..."
+		}
+		drawButton(screen, communityDraftPublishButton(slot), publishLabel)
 		drawButton(screen, communityDraftDeleteButton(slot), "x")
 	}
 	if g.communityPage > 0 {
