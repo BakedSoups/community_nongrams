@@ -314,7 +314,7 @@ func (g *Game) submitCommunityDraftPublish() {
 	g.saveCommunityLibrary()
 	g.pendingPublishID = draft.ID
 	g.pendingPublishAt = time.Now().Add(100 * time.Millisecond)
-	g.communityView = communityMyArt
+	g.publishAwaitingID = draft.ID
 	g.showCommunityNotice("publishing " + draft.Title + "...")
 }
 
@@ -391,6 +391,8 @@ func (g *Game) markCommunityDraftPublished(id string) {
 		g.communityLibrary.Drafts[i].Version++
 		g.communityLibrary.Drafts[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
 		g.saveCommunityLibrary()
+		g.publishAwaitingID = ""
+		g.communityView = communityMyArt
 		return
 	}
 }
@@ -661,7 +663,7 @@ func (g *Game) savePackSetup(publish bool) {
 	}
 	g.pendingPackPublishID = pack.ID
 	g.pendingPackPublishAt = time.Now().Add(100 * time.Millisecond)
-	g.communityView = communityPacks
+	g.packPublishAwaitingID = pack.ID
 	g.showCommunityNotice("publishing " + pack.Title + "...")
 }
 
@@ -691,6 +693,8 @@ func (g *Game) markCommunityPackPublished(id string) {
 		g.communityLibrary.Packs[i].Visibility = community.VisibilityPublic
 		g.communityLibrary.Packs[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
 		g.saveCommunityLibrary()
+		g.packPublishAwaitingID = ""
+		g.communityView = communityPacks
 		return
 	}
 }

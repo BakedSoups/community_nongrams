@@ -223,6 +223,8 @@ func (g *Game) updateCommunityInput() {
 		}
 	}
 	if result := takeCommunityResult(); result != "" {
+		g.publishAwaitingID = ""
+		g.packPublishAwaitingID = ""
 		g.showCommunityNotice(result)
 	}
 	if raw := takeCommunityImport(); raw != "" {
@@ -587,7 +589,9 @@ func (g *Game) updateCommunityInput() {
 		case communityPublishRightsButton().Contains(x, y) && g.publishSubmitOfficial:
 			g.publishRightsConfirmed = !g.publishRightsConfirmed
 		case communityPublishConfirmButton().Contains(x, y):
-			g.submitCommunityDraftPublish()
+			if g.publishAwaitingID == "" {
+				g.submitCommunityDraftPublish()
+			}
 		}
 	case communityImportPreview:
 		if communityImportConfirmButton().Contains(x, y) {
@@ -635,7 +639,9 @@ func (g *Game) updateCommunityInput() {
 		case communityPackSaveDraftButton().Contains(x, y):
 			g.savePackSetup(false)
 		case communityPackSetupPublishButton().Contains(x, y):
-			g.savePackSetup(true)
+			if g.packPublishAwaitingID == "" {
+				g.savePackSetup(true)
+			}
 		}
 	case communitySignIn:
 		if communitySignedIn() {

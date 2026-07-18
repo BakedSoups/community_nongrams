@@ -489,7 +489,11 @@ func (g *Game) drawCommunityPackSetup(screen *ebiten.Image) {
 	drawPublishField(screen, communityPackTitleField(), "Title", g.packSetupTitle, g.packSetupField == 0)
 	drawPublishField(screen, communityPackDescriptionField(), "Description", g.packSetupDescription, g.packSetupField == 1)
 	drawButton(screen, communityPackSaveDraftButton(), "Save Draft")
-	drawButton(screen, communityPackSetupPublishButton(), "Publish")
+	publishLabel := "Publish"
+	if g.packPublishAwaitingID != "" {
+		publishLabel = "Publishing..."
+	}
+	drawButton(screen, communityPackSetupPublishButton(), publishLabel)
 }
 
 func drawCommunityBackdrop(screen *ebiten.Image) {
@@ -653,7 +657,11 @@ func (g *Game) drawCommunityPublishSetup(screen *ebiten.Image) {
 		drawCenteredText(screen, "community upvotes and creator review.", rect{x: 76, y: 488, w: 388, h: 20}, colMuted)
 		drawSelectedButton(screen, communityPublishRightsButton(), checkboxLabel(g.publishRightsConfirmed, "I own this art"), g.publishRightsConfirmed)
 	}
-	drawButton(screen, communityPublishConfirmButton(), "Publish")
+	publishLabel := "Publish"
+	if g.publishAwaitingID != "" {
+		publishLabel = "Publishing..."
+	}
+	drawButton(screen, communityPublishConfirmButton(), publishLabel)
 }
 
 func drawPublishField(screen *ebiten.Image, r rect, label, value string, active bool) {
