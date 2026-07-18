@@ -540,11 +540,65 @@ func (g *Game) drawMainMenu(screen *ebiten.Image) {
 	drawMenuBackdrop(screen)
 	drawScaledTextCentered(screen, "PIXAROSS", rect{x: 76, y: 46, w: 388, h: 52}, 2.25, colInk)
 	drawButton(screen, mainLevelButton(), "Level Select")
-	drawButton(screen, mainCommunityButton(), "Community")
+	drawGlobalCommunityButton(screen)
 	drawButton(screen, mainSettingsButton(), "Settings")
 	if time.Now().Before(g.menuNoticeUntil) {
 		drawCenteredText(screen, g.menuNotice, rect{x: 0, y: 542, w: ScreenWidth, h: 36}, colAccent)
 	}
+}
+
+func drawGlobalCommunityButton(screen *ebiten.Image) {
+	r := mainCommunityButton()
+	drawRounded(screen, rect{x: r.x + 5, y: r.y + 6, w: r.w, h: r.h}, 6, color.RGBA{176, 166, 151, 140})
+	drawRounded(screen, r, 6, color.RGBA{14, 18, 27, 255})
+	for i := 0; i < 22; i++ {
+		x := int(r.x) + 8 + (i*47)%int(r.w-16)
+		y := int(r.y) + 6 + (i*19)%int(r.h-12)
+		s := float32(1)
+		if i%7 == 0 {
+			s = 2
+		}
+		vector.DrawFilledRect(screen, float32(x), float32(y), s, s, colWhite, false)
+	}
+	drawPixelPlanet(screen, int(r.x+31), int(r.y+23))
+	drawPixelAstronaut(screen, int(r.x+r.w-35), int(r.y+23))
+	drawCenteredText(screen, "Global Community", rect{x: r.x + 62, y: r.y, w: r.w - 124, h: r.h}, colWhite)
+	drawRectOutline(screen, r, 2, colGridHeavy)
+}
+
+// Pixelized spherical noise adapted from Deep-Fold/PixelPlanets (MIT).
+func drawPixelPlanet(screen *ebiten.Image, centerX, centerY int) {
+	const cell = 3
+	for y := -15; y <= 15; y += cell {
+		for x := -15; x <= 15; x += cell {
+			if x*x+y*y > 225 {
+				continue
+			}
+			n := perlin2D(float64(x+22)/8, float64(y+31)/8)
+			c := color.RGBA{57, 123, 132, 255}
+			if n > 0.05 {
+				c = color.RGBA{111, 151, 91, 255}
+			}
+			if x+y > 10 {
+				c = mixCommunityColor(c, color.RGBA{24, 35, 49, 255}, 0.48)
+			}
+			vector.DrawFilledRect(screen, float32(centerX+x), float32(centerY+y), cell, cell, c, false)
+		}
+	}
+}
+
+func drawPixelAstronaut(screen *ebiten.Image, x, y int) {
+	white := color.RGBA{239, 235, 220, 255}
+	visor := color.RGBA{86, 115, 134, 255}
+	shadow := color.RGBA{151, 83, 71, 255}
+	vector.DrawFilledRect(screen, float32(x-7), float32(y-13), 14, 10, white, false)
+	vector.DrawFilledRect(screen, float32(x-4), float32(y-10), 8, 5, visor, false)
+	vector.DrawFilledRect(screen, float32(x-6), float32(y-3), 12, 12, white, false)
+	vector.DrawFilledRect(screen, float32(x-3), float32(y), 6, 4, shadow, false)
+	vector.DrawFilledRect(screen, float32(x-10), float32(y-1), 4, 9, white, false)
+	vector.DrawFilledRect(screen, float32(x+6), float32(y-1), 4, 9, white, false)
+	vector.DrawFilledRect(screen, float32(x-6), float32(y+9), 4, 7, white, false)
+	vector.DrawFilledRect(screen, float32(x+2), float32(y+9), 4, 7, white, false)
 }
 
 func mainLevelButton() rect {
