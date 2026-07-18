@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"image/color"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -9,13 +10,13 @@ import (
 )
 
 const (
-	communityDraftsPerPage     = 4
+	communityDraftsPerPage     = 3
 	communityCatalogPerPage    = 4
 	communityPackDraftsPerPage = 4
 )
 
 func (g *Game) drawCommunity(screen *ebiten.Image) {
-	drawMenuBackdrop(screen)
+	drawCommunityBackdrop(screen)
 	drawScaledTextCentered(screen, "COMMUNITY", rect{x: 76, y: 42, w: 388, h: 52}, 2.1, colInk)
 	if g.communityView == communityHome {
 		g.drawCommunityAccount(screen)
@@ -387,10 +388,10 @@ func (g *Game) drawCommunityMyArt(screen *ebiten.Image) {
 		drawCommunityArtThumbnail(screen, draft.Puzzle.SkeletonRaw, communityMyArtBeforePreviewRect(slot))
 		drawCommunityArtThumbnail(screen, draft.Puzzle.RevealRaw, communityMyArtAfterPreviewRect(slot))
 		title := draft.Title
-		if len(title) > 24 {
-			title = title[:24]
+		if len(title) > 16 {
+			title = title[:16]
 		}
-		drawText(screen, title, int(r.x+8), int(r.y+16), colInk)
+		drawText(screen, title, int(r.x+158), int(r.y+27), colInk)
 		status := string(draft.Status)
 		if status == "" {
 			status = "draft"
@@ -399,7 +400,7 @@ func (g *Game) drawCommunityMyArt(screen *ebiten.Image) {
 		if g.pendingPublishID == draft.ID {
 			statusText = "publishing"
 		}
-		drawText(screen, statusText, int(r.x+116), int(r.y+43), colMuted)
+		drawText(screen, statusText, int(r.x+158), int(r.y+54), colMuted)
 		drawButton(screen, communityDraftEditButton(slot), "edit")
 		publishLabel := "pub"
 		if g.pendingPublishID == draft.ID {
@@ -414,6 +415,22 @@ func (g *Game) drawCommunityMyArt(screen *ebiten.Image) {
 	if (g.communityPage+1)*communityDraftsPerPage < len(g.communityLibrary.Drafts) {
 		drawButton(screen, communityNextButton(), "next")
 	}
+}
+
+func drawCommunityBackdrop(screen *ebiten.Image) {
+	screen.Fill(colPanel)
+	vector.DrawFilledRect(screen, 0, 0, ScreenWidth, 186, colBackdrop, false)
+	colors := []color.Color{colBlue, colGreen, colAccentSoft, colPanelDark}
+	for i := 0; i < 18; i++ {
+		x := float32((i*37)%ScreenWidth - 8)
+		y := float32(8 + (i%3)*48)
+		c := colors[i%len(colors)]
+		vector.DrawFilledRect(screen, x, y, 18, 18, c, false)
+		vector.DrawFilledRect(screen, x+18, y+18, 18, 18, colCell, false)
+	}
+	vector.DrawFilledRect(screen, 0, 176, ScreenWidth, 12, colGridHeavy, false)
+	drawRounded(screen, rect{x: 62, y: 32, w: 416, h: 92}, 8, color.RGBA{45, 45, 43, 255})
+	drawRounded(screen, rect{x: 76, y: 46, w: 388, h: 52}, 6, colWhite)
 }
 
 func drawLibraryTabs(screen *ebiten.Image, art bool) {
@@ -475,29 +492,27 @@ func communityDraftRect(slot int) rect {
 	return rect{x: 54, y: 234 + float64(slot)*88, w: 432, h: 74}
 }
 func communityMyArtRect(slot int) rect {
-	column := slot % 2
-	row := slot / 2
-	return rect{x: 44 + float64(column)*234, y: 320 + float64(row)*136, w: 218, h: 120}
+	return rect{x: 48, y: 318 + float64(slot)*92, w: 444, h: 82}
 }
 func communityMyArtBeforePreviewRect(slot int) rect {
 	r := communityMyArtRect(slot)
-	return rect{x: r.x + 8, y: r.y + 30, w: 48, h: 48}
+	return rect{x: r.x + 10, y: r.y + 10, w: 62, h: 62}
 }
 func communityMyArtAfterPreviewRect(slot int) rect {
 	r := communityMyArtRect(slot)
-	return rect{x: r.x + 62, y: r.y + 30, w: 48, h: 48}
+	return rect{x: r.x + 80, y: r.y + 10, w: 62, h: 62}
 }
 func communityDraftEditButton(slot int) rect {
 	r := communityMyArtRect(slot)
-	return rect{x: r.x + 112, y: r.y + 62, w: 34, h: 32}
+	return rect{x: r.x + 300, y: r.y + 23, w: 40, h: 38}
 }
 func communityDraftPublishButton(slot int) rect {
 	r := communityMyArtRect(slot)
-	return rect{x: r.x + 150, y: r.y + 62, w: 38, h: 32}
+	return rect{x: r.x + 346, y: r.y + 23, w: 46, h: 38}
 }
 func communityDraftDeleteButton(slot int) rect {
 	r := communityMyArtRect(slot)
-	return rect{x: r.x + 192, y: r.y + 62, w: 20, h: 32}
+	return rect{x: r.x + 398, y: r.y + 23, w: 34, h: 38}
 }
 func communityPrevButton() rect { return rect{x: 62, y: 604, w: 92, h: 38} }
 func communityNextButton() rect { return rect{x: 386, y: 604, w: 92, h: 38} }
