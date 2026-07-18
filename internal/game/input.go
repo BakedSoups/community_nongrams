@@ -281,7 +281,7 @@ func (g *Game) updateCommunityInput() {
 			g.communityPage = 0
 			return
 		}
-		if communityLibraryAddButton().Contains(x, y) {
+		if communityArtCreateButton().Contains(x, y) {
 			g.communityView = communityCreate
 			return
 		}
@@ -373,10 +373,6 @@ func (g *Game) updateCommunityInput() {
 		if communityLibraryArtTab().Contains(x, y) {
 			g.communityView = communityMyArt
 			g.communityPage = 0
-			return
-		}
-		if communityLibraryAddButton().Contains(x, y) {
-			g.communityView = communityCreate
 			return
 		}
 		if communityPackCreateButton().Contains(x, y) {

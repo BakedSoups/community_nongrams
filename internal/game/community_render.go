@@ -132,17 +132,30 @@ func (g *Game) drawCommunityGalleryPack(screen *ebiten.Image) {
 func (g *Game) drawCommunityPacks(screen *ebiten.Image) {
 	drawCenteredText(screen, "MY LIBRARY", rect{x: 100, y: 190, w: 340, h: 30}, colInk)
 	drawLibraryTabs(screen, false)
-	drawButton(screen, communityLibraryAddButton(), "+")
 	drawButton(screen, communityPackCreateButton(), "Create Pack")
 	for i, pack := range g.communityLibrary.Packs {
 		if i >= 4 {
 			break
 		}
-		r := rect{x: 70, y: 328 + float64(i)*62, w: 400, h: 50}
+		r := communityPackRect(i)
 		drawRounded(screen, r, 6, colWhite)
 		drawRectOutline(screen, r, 2, colGridHeavy)
-		drawText(screen, pack.Title, int(r.x+14), int(r.y+18), colInk)
-		drawText(screen, fmt.Sprintf("%d/%d", len(pack.Progress.CompletedLevelIDs), len(pack.Items)), int(r.x+220), int(r.y+18), colMuted)
+		title := pack.Title
+		if len(title) > 10 {
+			title = title[:10]
+		}
+		drawText(screen, title, int(r.x+10), int(r.y+20), colInk)
+		drawText(screen, fmt.Sprintf("%d art", len(pack.Items)), int(r.x+10), int(r.y+44), colMuted)
+		for art, item := range pack.Items {
+			if art >= 20 {
+				break
+			}
+			draft, ok := g.communityLibrary.Draft(item.LevelID)
+			if !ok || draft.Puzzle == nil {
+				continue
+			}
+			drawCommunityArtThumbnail(screen, draft.Puzzle.RevealRaw, communityPackArtPreview(i, art))
+		}
 		drawButton(screen, communityPackPlayButton(i), "play")
 		drawButton(screen, communityPackPublishButton(i), "publish")
 	}
@@ -348,7 +361,7 @@ func (g *Game) drawCommunityPackBuilder(screen *ebiten.Image) {
 func (g *Game) drawCommunityMyArt(screen *ebiten.Image) {
 	drawCenteredText(screen, "MY LIBRARY", rect{x: 100, y: 190, w: 340, h: 30}, colInk)
 	drawLibraryTabs(screen, true)
-	drawButton(screen, communityLibraryAddButton(), "+")
+	drawButton(screen, communityArtCreateButton(), "Create or Import")
 	start := g.communityPage * communityDraftsPerPage
 	if start >= len(g.communityLibrary.Drafts) {
 		drawCenteredText(screen, "No drafts yet", rect{x: 80, y: 350, w: 380, h: 32}, colMuted)
@@ -436,14 +449,14 @@ func communityCreatePackButton() rect   { return rect{x: 104, y: 406, w: 332, h:
 func communityImportHelpButton() rect   { return rect{x: 104, y: 474, w: 332, h: 48} }
 func communityLibraryArtTab() rect      { return rect{x: 70, y: 226, w: 142, h: 36} }
 func communityLibraryPacksTab() rect    { return rect{x: 216, y: 226, w: 142, h: 36} }
-func communityLibraryAddButton() rect   { return rect{x: 424, y: 226, w: 48, h: 36} }
+func communityArtCreateButton() rect    { return rect{x: 154, y: 270, w: 232, h: 38} }
 func communityDraftRect(slot int) rect {
 	return rect{x: 54, y: 234 + float64(slot)*88, w: 432, h: 74}
 }
 func communityMyArtRect(slot int) rect {
 	column := slot % 2
 	row := slot / 2
-	return rect{x: 44 + float64(column)*234, y: 278 + float64(row)*136, w: 218, h: 120}
+	return rect{x: 44 + float64(column)*234, y: 320 + float64(row)*136, w: 218, h: 120}
 }
 func communityMyArtBeforePreviewRect(slot int) rect {
 	r := communityMyArtRect(slot)
@@ -497,12 +510,21 @@ func communityCreatorLevelButtonAt(slot int, y float64) rect {
 	row := slot / 2
 	return rect{x: 46 + float64(column)*232, y: y + float64(row)*92, w: 216, h: 78}
 }
-func communityPackCreateButton() rect { return rect{x: 92, y: 276, w: 356, h: 40} }
+func communityPackCreateButton() rect { return rect{x: 154, y: 270, w: 232, h: 38} }
+func communityPackRect(slot int) rect { return rect{x: 44, y: 318 + float64(slot)*70, w: 452, h: 64} }
+func communityPackArtPreview(slot, art int) rect {
+	r := communityPackRect(slot)
+	column := art % 10
+	row := art / 10
+	return rect{x: r.x + 104 + float64(column)*17, y: r.y + 9 + float64(row)*25, w: 16, h: 16}
+}
 func communityPackPlayButton(slot int) rect {
-	return rect{x: 316, y: 334 + float64(slot)*62, w: 62, h: 38}
+	r := communityPackRect(slot)
+	return rect{x: r.x + 280, y: r.y + 14, w: 54, h: 36}
 }
 func communityPackPublishButton(slot int) rect {
-	return rect{x: 384, y: 334 + float64(slot)*62, w: 74, h: 38}
+	r := communityPackRect(slot)
+	return rect{x: r.x + 340, y: r.y + 14, w: 68, h: 36}
 }
 func communityGoogleButton() rect   { return rect{x: 122, y: 370, w: 296, h: 42} }
 func communityEmailInput() rect     { return rect{x: 102, y: 434, w: 336, h: 44} }
