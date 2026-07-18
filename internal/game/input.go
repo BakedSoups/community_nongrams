@@ -324,8 +324,15 @@ func (g *Game) updateCommunityInput() {
 				requestCommunitySignOut()
 				g.communityView = communityHome
 			}
-		} else if communitySendLinkButton().Contains(x, y) {
-			g.submitCommunitySignIn()
+		} else {
+			switch {
+			case communityGoogleButton().Contains(x, y):
+				if !requestCommunityGoogleSignIn() {
+					g.showCommunityNotice("Google sign in is unavailable")
+				}
+			case communitySendLinkButton().Contains(x, y):
+				g.submitCommunitySignIn()
+			}
 		}
 	}
 }

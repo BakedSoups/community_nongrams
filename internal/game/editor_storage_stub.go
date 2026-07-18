@@ -22,6 +22,8 @@ func requestCommunitySignIn(string) bool { return false }
 
 func requestCommunitySignOut() bool { return false }
 
+func requestCommunityGoogleSignIn() bool { return false }
+
 func requestCommunityPublish(string) bool { return false }
 
 func requestCommunityPackPublish(string) bool { return false }

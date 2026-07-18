@@ -158,6 +158,12 @@
 	  localStorage.removeItem(communitySessionKey);
 	  setCommunityResult("signed out");
 	};
+	window.requestCommunityGoogleSignIn = () => {
+	  const { url, key } = communityConfig();
+	  if (!url || !key) return setCommunityResult("community cloud is not configured yet");
+	  const redirectTo = location.href.split("#")[0];
+	  location.assign(`${url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`);
+	};
 	window.communityAccountLabel = () => readCommunitySession()?.access_token ? "Account" : "Sign in";
 	window.communitySignedIn = () => Boolean(readCommunitySession()?.access_token);
 	window.requestCommunityPublish = async (raw) => {

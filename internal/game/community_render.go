@@ -104,7 +104,7 @@ func (g *Game) drawCommunityCreate(screen *ebiten.Image) {
 
 func (g *Game) drawCommunitySignIn(screen *ebiten.Image) {
 	drawCenteredText(screen, "ACCOUNT", rect{x: 100, y: 218, w: 340, h: 32}, colInk)
-	panel := rect{x: 72, y: 272, w: 396, h: 256}
+	panel := rect{x: 72, y: 254, w: 396, h: 328}
 	drawRounded(screen, panel, 6, colWhite)
 	drawRectOutline(screen, panel, 3, colGridHeavy)
 	if communitySignedIn() {
@@ -113,7 +113,8 @@ func (g *Game) drawCommunitySignIn(screen *ebiten.Image) {
 		drawButton(screen, communitySignOutButton(), "sign out")
 		return
 	}
-	drawCommunityArtThumbnail(screen, defaultCommunityProfilePixels, rect{x: 222, y: 294, w: 96, h: 96})
+	drawCommunityArtThumbnail(screen, defaultCommunityProfilePixels, rect{x: 230, y: 270, w: 80, h: 80})
+	drawButton(screen, communityGoogleButton(), "continue with Google")
 	input := communityEmailInput()
 	drawRounded(screen, input, 4, colPanel)
 	drawRectOutline(screen, input, 3, colGridHeavy)
@@ -280,8 +281,9 @@ func communityPackPlayButton(slot int) rect {
 func communityPackPublishButton(slot int) rect {
 	return rect{x: 384, y: 309 + float64(slot)*66, w: 74, h: 38}
 }
-func communityEmailInput() rect     { return rect{x: 102, y: 406, w: 336, h: 44} }
-func communitySendLinkButton() rect { return rect{x: 142, y: 468, w: 256, h: 42} }
+func communityGoogleButton() rect   { return rect{x: 122, y: 370, w: 296, h: 42} }
+func communityEmailInput() rect     { return rect{x: 102, y: 434, w: 336, h: 44} }
+func communitySendLinkButton() rect { return rect{x: 142, y: 500, w: 256, h: 42} }
 func communitySignOutButton() rect  { return rect{x: 174, y: 468, w: 192, h: 42} }
 func communityPackDraftButton(slot int) rect {
 	return rect{x: 66, y: 246 + float64(slot)*72, w: 408, h: 64}

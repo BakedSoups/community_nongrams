@@ -108,6 +108,15 @@ func requestCommunitySignOut() bool {
 	return true
 }
 
+func requestCommunityGoogleSignIn() bool {
+	fn := js.Global().Get("requestCommunityGoogleSignIn")
+	if fn.IsUndefined() || fn.IsNull() {
+		return false
+	}
+	fn.Invoke()
+	return true
+}
+
 func requestCommunityPublish(raw string) bool {
 	fn := js.Global().Get("requestCommunityPublish")
 	if fn.IsUndefined() || fn.IsNull() {
