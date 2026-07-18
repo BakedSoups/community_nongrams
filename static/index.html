@@ -663,10 +663,10 @@
     window.addEventListener("keydown", startMusic, { once: true });
 
     const dev = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-    const wasmPath = "game.wasm";
+    const wasmPath = `game.wasm?v=${Date.now()}`;
 
     const go = new Go();
-    WebAssembly.instantiateStreaming(fetch(wasmPath), go.importObject).then((result) => {
+    WebAssembly.instantiateStreaming(fetch(wasmPath, { cache: "no-store" }), go.importObject).then((result) => {
       document.getElementById("status").remove();
       go.run(result.instance);
     }).catch((err) => {
