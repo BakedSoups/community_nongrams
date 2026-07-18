@@ -95,9 +95,11 @@ func (g *Game) drawCommunityBrowse(screen *ebiten.Image) {
 		}
 		drawText(screen, title, int(r.x+70), int(r.y+18), colInk)
 		drawText(screen, creator, int(r.x+70), int(r.y+41), colMuted)
+		avatar := defaultCommunityProfilePixels
 		if item.AvatarPuzzle != nil {
-			drawCommunityArtThumbnail(screen, item.AvatarPuzzle.RevealRaw, rect{x: r.x + r.w - 42, y: r.y + 5, w: 32, h: 26})
+			avatar = item.AvatarPuzzle.RevealRaw
 		}
+		drawCommunityArtThumbnail(screen, avatar, rect{x: r.x + r.w - 42, y: r.y + 5, w: 32, h: 26})
 		drawButton(screen, communityGalleryOpenButton(slot), map[bool]string{true: "open", false: "play"}[item.Kind == "pack"])
 		drawButton(screen, communityGalleryLikeButton(slot), fmt.Sprintf("+ %d", item.Likes))
 		if item.Owned {
