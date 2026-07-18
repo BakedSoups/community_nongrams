@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"image/color"
+	"math"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -17,7 +18,7 @@ const (
 
 func (g *Game) drawCommunity(screen *ebiten.Image) {
 	drawCommunityBackdrop(screen)
-	drawScaledTextCentered(screen, "COMMUNITY", rect{x: 76, y: 42, w: 388, h: 52}, 2.1, colInk)
+	drawScaledTextCentered(screen, "GLOBAL COMMUNITY", rect{x: 76, y: 42, w: 388, h: 52}, 1.65, colInk)
 	if g.communityView == communityHome {
 		g.drawCommunityAccount(screen)
 	}
@@ -419,18 +420,80 @@ func (g *Game) drawCommunityMyArt(screen *ebiten.Image) {
 
 func drawCommunityBackdrop(screen *ebiten.Image) {
 	screen.Fill(colPanel)
-	vector.DrawFilledRect(screen, 0, 0, ScreenWidth, 186, colBackdrop, false)
-	colors := []color.Color{colBlue, colGreen, colAccentSoft, colPanelDark}
-	for i := 0; i < 18; i++ {
-		x := float32((i*37)%ScreenWidth - 8)
-		y := float32(8 + (i%3)*48)
-		c := colors[i%len(colors)]
-		vector.DrawFilledRect(screen, x, y, 18, 18, c, false)
-		vector.DrawFilledRect(screen, x+18, y+18, 18, 18, colCell, false)
+	const pixelSize = 6
+	for y := 0; y < 186; y += pixelSize {
+		for x := 0; x < ScreenWidth; x += pixelSize {
+			n := perlin2D(float64(x)/92, float64(y)/72)
+			cloud := math.Max(0, math.Abs(n)-0.08) / 0.55
+			cloud = math.Min(1, cloud)
+			base := color.RGBA{14, 18, 27, 255}
+			if n >= 0 {
+				base = mixCommunityColor(base, color.RGBA{43, 100, 101, 255}, cloud)
+			} else {
+				base = mixCommunityColor(base, color.RGBA{116, 62, 80, 255}, cloud)
+			}
+			vector.DrawFilledRect(screen, float32(x), float32(y), pixelSize, pixelSize, base, false)
+			star := communityStarHash(x/pixelSize, y/pixelSize)
+			if star%113 == 0 {
+				size := float32(2)
+				if star%7 == 0 {
+					size = 3
+				}
+				vector.DrawFilledRect(screen, float32(x+2), float32(y+2), size, size, colWhite, false)
+			}
+		}
 	}
 	vector.DrawFilledRect(screen, 0, 176, ScreenWidth, 12, colGridHeavy, false)
 	drawRounded(screen, rect{x: 62, y: 32, w: 416, h: 92}, 8, color.RGBA{45, 45, 43, 255})
 	drawRounded(screen, rect{x: 76, y: 46, w: 388, h: 52}, 6, colWhite)
+}
+
+func perlin2D(x, y float64) float64 {
+	x0 := math.Floor(x)
+	y0 := math.Floor(y)
+	sx := perlinFade(x - x0)
+	sy := perlinFade(y - y0)
+	n00 := perlinGradient(int(x0), int(y0), x-x0, y-y0)
+	n10 := perlinGradient(int(x0)+1, int(y0), x-x0-1, y-y0)
+	n01 := perlinGradient(int(x0), int(y0)+1, x-x0, y-y0-1)
+	n11 := perlinGradient(int(x0)+1, int(y0)+1, x-x0-1, y-y0-1)
+	return perlinLerp(perlinLerp(n00, n10, sx), perlinLerp(n01, n11, sx), sy)
+}
+
+func perlinFade(t float64) float64       { return t * t * t * (t*(t*6-15) + 10) }
+func perlinLerp(a, b, t float64) float64 { return a + (b-a)*t }
+
+func perlinGradient(ix, iy int, x, y float64) float64 {
+	switch communityStarHash(ix, iy) & 7 {
+	case 0:
+		return x + y
+	case 1:
+		return -x + y
+	case 2:
+		return x - y
+	case 3:
+		return -x - y
+	case 4:
+		return x
+	case 5:
+		return -x
+	case 6:
+		return y
+	default:
+		return -y
+	}
+}
+
+func communityStarHash(x, y int) uint32 {
+	h := uint32(x)*0x8da6b343 ^ uint32(y)*0xd8163841
+	h ^= h >> 13
+	h *= 0x85ebca6b
+	return h ^ (h >> 16)
+}
+
+func mixCommunityColor(a, b color.RGBA, amount float64) color.RGBA {
+	mix := func(x, y uint8) uint8 { return uint8(float64(x) + (float64(y)-float64(x))*amount) }
+	return color.RGBA{mix(a.R, b.R), mix(a.G, b.G), mix(a.B, b.B), 255}
 }
 
 func drawLibraryTabs(screen *ebiten.Image, art bool) {
