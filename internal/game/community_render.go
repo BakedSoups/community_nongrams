@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -240,7 +241,8 @@ func (g *Game) drawCommunityCreatorProfile(screen *ebiten.Image) {
 	contentY := float64(310)
 	if len(creator.Featured) > 0 {
 		featured := creator.Featured[0]
-		drawText(screen, "PROMOTED", 48, 310, colAccent)
+		drawPixelFavoriteStar(screen, 48, 304)
+		drawText(screen, "FAVORITE PICROSS", 72, 310, colAccent)
 		r := communityCreatorFeaturedButton()
 		drawRounded(screen, r, 5, colWhite)
 		drawRectOutline(screen, r, 2, colAccent)
@@ -250,7 +252,11 @@ func (g *Game) drawCommunityCreatorProfile(screen *ebiten.Image) {
 			drawCommunityArtThumbnail(screen, featured.Levels[0].Puzzle.RevealRaw, rect{x: r.x + 7, y: r.y + 7, w: 58, h: 58})
 		}
 		drawText(screen, featured.Title, int(r.x+76), int(r.y+23), colInk)
-		drawText(screen, fmt.Sprintf("%s  + %d", featured.Kind, featured.Likes), int(r.x+76), int(r.y+48), colMuted)
+		likeLabel := "LIKES"
+		if featured.Likes == 1 {
+			likeLabel = "LIKE"
+		}
+		drawText(screen, fmt.Sprintf("%s   %d %s", strings.ToUpper(featured.Kind), featured.Likes, likeLabel), int(r.x+76), int(r.y+48), colMuted)
 		contentY = 410
 	}
 	start := g.communityPage * 4
@@ -275,6 +281,12 @@ func (g *Game) drawCommunityCreatorProfile(screen *ebiten.Image) {
 	if (g.communityPage+1)*4 < len(creator.Levels) {
 		drawButton(screen, communityNextButton(), "next")
 	}
+}
+
+func drawPixelFavoriteStar(screen *ebiten.Image, x, y int) {
+	vector.DrawFilledRect(screen, float32(x+8), float32(y), 6, 22, colAccent, false)
+	vector.DrawFilledRect(screen, float32(x), float32(y+8), 22, 6, colAccent, false)
+	vector.DrawFilledRect(screen, float32(x+4), float32(y+4), 14, 14, colAccent, false)
 }
 
 func (g *Game) drawCommunityAccount(screen *ebiten.Image) {
