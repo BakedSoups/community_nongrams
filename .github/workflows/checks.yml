@@ -17,13 +17,13 @@ jobs:
           go-version: "1.26.x"
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev xvfb
 
       - name: Check formatting
         run: test -z "$(gofmt -l ./cmd ./internal)"
 
       - name: Test
-        run: go test ./...
+        run: xvfb-run -a go test ./...
 
       - name: Vet
         run: go vet ./...
