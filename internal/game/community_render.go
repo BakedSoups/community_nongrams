@@ -47,6 +47,8 @@ func (g *Game) drawCommunity(screen *ebiten.Image) {
 		g.drawCommunityPublished(screen)
 	case communityPublishSetup:
 		g.drawCommunityPublishSetup(screen)
+	case communityImportPreview:
+		g.drawCommunityImportPreview(screen)
 	default:
 		g.drawCommunityHome(screen)
 	}
@@ -286,26 +288,42 @@ func (g *Game) drawCommunityAccount(screen *ebiten.Image) {
 
 func (g *Game) drawCommunityCreate(screen *ebiten.Image) {
 	drawCenteredText(screen, "CREATE", rect{x: 100, y: 202, w: 340, h: 34}, colInk)
-	drawButton(screen, communityNewButton(), "New Drawing")
+	drawButton(screen, communityNewButton(), "Create New Art")
 	drawButton(screen, communityImportButton(), "Import Sprite Sheet")
-	drawButton(screen, communityCreatePackButton(), "Create Pack")
-	drawButton(screen, communityImportHelpButton(), "Import Instructions")
+	drawButton(screen, communityImportHelpButton(), "?")
 }
 
 func (g *Game) drawCommunityImportHelp(screen *ebiten.Image) {
 	drawCenteredText(screen, "SPRITE SHEET IMPORT", rect{x: 48, y: 190, w: 444, h: 34}, colInk)
-	panel := rect{x: 48, y: 238, w: 444, h: 342}
+	panel := rect{x: 48, y: 230, w: 444, h: 370}
 	drawRounded(screen, panel, 6, colWhite)
 	drawRectOutline(screen, panel, 2, colGridHeavy)
-	drawText(screen, "ANY DRAWING APP", 70, 270, colAccent)
-	drawText(screen, "1. Use 8, 10, 15, or 20 px squares", 70, 302, colInk)
-	drawText(screen, "2. Pair Before/After left-right or up-down", 70, 334, colInk)
-	drawText(screen, "3. Export one PNG sprite sheet", 70, 366, colInk)
-	drawText(screen, "Before is black. After keeps color.", 70, 404, colMuted)
-	drawText(screen, "ASEPRITE MULTI-ART", 70, 450, colAccent)
-	drawText(screen, "Export PNG + JSON (array data)", 70, 482, colInk)
-	drawText(screen, "Name: flower_before / flower_after", 70, 514, colInk)
-	drawText(screen, "Each named pair becomes one artwork.", 70, 546, colMuted)
+	drawCenteredText(screen, "BEFORE", rect{x: 76, y: 246, w: 112, h: 24}, colMuted)
+	drawCenteredText(screen, "AFTER", rect{x: 198, y: 246, w: 112, h: 24}, colMuted)
+	drawCommunityArtThumbnail(screen, importExampleBefore, rect{x: 88, y: 272, w: 88, h: 88})
+	drawCommunityArtThumbnail(screen, importExampleAfter, rect{x: 210, y: 272, w: 88, h: 88})
+	drawText(screen, "black shape", 316, 300, colInk)
+	drawText(screen, "color reveal", 316, 332, colInk)
+	drawText(screen, "PNG SHEETS", 70, 392, colAccent)
+	drawText(screen, "8, 10, 15, or 20 px square frames", 70, 422, colInk)
+	drawText(screen, "Pair Before/After left-right or up-down", 70, 450, colInk)
+	drawText(screen, "ASEPRITE", 70, 492, colAccent)
+	drawText(screen, "Export PNG + JSON (array data)", 70, 522, colInk)
+	drawText(screen, "flower_before / flower_after", 70, 550, colInk)
+	drawText(screen, "Each pair previews before import.", 70, 578, colMuted)
+}
+
+func (g *Game) drawCommunityImportPreview(screen *ebiten.Image) {
+	drawCenteredText(screen, "IMPORT PREVIEW", rect{x: 70, y: 190, w: 400, h: 30}, colInk)
+	for slot, puzzle := range g.communityImportPack.Levels {
+		if slot >= 6 || puzzle == nil {
+			break
+		}
+		r := communityImportPreviewRect(slot)
+		drawCommunityArtThumbnail(screen, puzzle.RevealRaw, r)
+	}
+	drawCenteredText(screen, fmt.Sprintf("%d artwork", len(g.communityImportPack.Levels)), rect{x: 90, y: 494, w: 360, h: 30}, colMuted)
+	drawButton(screen, communityImportConfirmButton(), "Import to My Art")
 }
 
 func (g *Game) drawCommunitySignIn(screen *ebiten.Image) {
@@ -623,9 +641,8 @@ func communityCreateButton() rect        { return rect{x: 128, y: 410, w: 284, h
 func communityMyArtButton() rect         { return rect{x: 108, y: 388, w: 324, h: 50} }
 func communityCreatorsButton() rect      { return rect{x: 108, y: 462, w: 324, h: 50} }
 func communityNewButton() rect           { return rect{x: 104, y: 270, w: 332, h: 48} }
-func communityImportButton() rect        { return rect{x: 104, y: 338, w: 332, h: 48} }
-func communityCreatePackButton() rect    { return rect{x: 104, y: 406, w: 332, h: 48} }
-func communityImportHelpButton() rect    { return rect{x: 104, y: 474, w: 332, h: 48} }
+func communityImportButton() rect        { return rect{x: 104, y: 338, w: 278, h: 48} }
+func communityImportHelpButton() rect    { return rect{x: 392, y: 338, w: 44, h: 48} }
 func communityLibraryArtTab() rect       { return rect{x: 54, y: 226, w: 136, h: 36} }
 func communityLibraryPacksTab() rect     { return rect{x: 194, y: 226, w: 136, h: 36} }
 func communityLibraryPublishedTab() rect { return rect{x: 334, y: 226, w: 152, h: 36} }
@@ -646,7 +663,13 @@ func communityPublishTagsField() rect        { return rect{x: 270, y: 362, w: 22
 func communityPublishOfficialButton() rect   { return rect{x: 88, y: 426, w: 364, h: 40} }
 func communityPublishRightsButton() rect     { return rect{x: 88, y: 476, w: 364, h: 40} }
 func communityPublishConfirmButton() rect    { return rect{x: 170, y: 538, w: 200, h: 44} }
-func communityArtCreateButton() rect         { return rect{x: 154, y: 270, w: 232, h: 38} }
+func communityImportPreviewRect(slot int) rect {
+	column := slot % 3
+	row := slot / 3
+	return rect{x: 68 + float64(column)*140, y: 246 + float64(row)*120, w: 104, h: 104}
+}
+func communityImportConfirmButton() rect { return rect{x: 142, y: 540, w: 256, h: 44} }
+func communityArtCreateButton() rect     { return rect{x: 154, y: 270, w: 232, h: 38} }
 func communityDraftRect(slot int) rect {
 	return rect{x: 54, y: 234 + float64(slot)*88, w: 432, h: 74}
 }
@@ -777,3 +800,30 @@ var defaultCommunityProfilePixels = func() [][]string {
 	}
 	return pixels
 }()
+
+var importExampleBefore = pixelExample([]string{
+	"00011000", "00111100", "01111110", "11111111",
+	"11111111", "01111110", "00111100", "00011000",
+}, []string{"#000000FF"})
+
+var importExampleAfter = pixelExample([]string{
+	"00011000", "00122100", "01222210", "12233221",
+	"12233221", "01222210", "00122100", "00011000",
+}, []string{"#EB6B56FF", "#F4C95DFF", "#4B8F8CFF"})
+
+func pixelExample(rows []string, colors []string) [][]string {
+	pixels := make([][]string, len(rows))
+	for y, row := range rows {
+		pixels[y] = make([]string, len(row))
+		for x, value := range row {
+			if value == '0' {
+				continue
+			}
+			index := int(value - '1')
+			if index >= 0 && index < len(colors) {
+				pixels[y][x] = colors[index]
+			}
+		}
+	}
+	return pixels
+}

@@ -107,6 +107,8 @@ type Game struct {
 	publishField           int
 	publishSubmitOfficial  bool
 	publishRightsConfirmed bool
+	communityImportRaw     string
+	communityImportPack    editorPack
 	communityNotice        string
 	communityNoticeUntil   time.Time
 }

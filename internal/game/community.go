@@ -27,6 +27,7 @@ const (
 	communityImportHelp
 	communityPublished
 	communityPublishSetup
+	communityImportPreview
 )
 
 func loadCommunityLibrary() community.Library {
@@ -213,6 +214,25 @@ func (g *Game) importCommunityPack(raw string) error {
 	g.communityView = communityMyArt
 	g.communityPage = 0
 	g.showCommunityNotice(fmt.Sprintf("imported %d level(s)", imported))
+	return nil
+}
+
+func (g *Game) loadCommunityImportPreview(raw string) error {
+	var pack editorPack
+	if err := json.Unmarshal([]byte(raw), &pack); err != nil {
+		return err
+	}
+	if len(pack.Levels) == 0 {
+		return fmt.Errorf("no paired levels were found")
+	}
+	for _, puzzle := range pack.Levels {
+		if puzzle == nil || puzzle.ParseSolution() != nil {
+			return fmt.Errorf("import contains invalid artwork")
+		}
+	}
+	g.communityImportRaw = raw
+	g.communityImportPack = pack
+	g.communityView = communityImportPreview
 	return nil
 }
 

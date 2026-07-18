@@ -225,7 +225,7 @@ func (g *Game) updateCommunityInput() {
 		g.showCommunityNotice(result)
 	}
 	if raw := takeCommunityImport(); raw != "" {
-		if err := g.importCommunityPack(raw); err != nil {
+		if err := g.loadCommunityImportPreview(raw); err != nil {
 			g.showCommunityNotice("import failed: " + err.Error())
 		}
 	}
@@ -331,8 +331,6 @@ func (g *Game) updateCommunityInput() {
 			if !requestCommunityImport() {
 				g.showCommunityNotice("import is available in the web build")
 			}
-		case communityCreatePackButton().Contains(x, y):
-			g.openPackBuilder()
 		case communityImportHelpButton().Contains(x, y):
 			g.communityView = communityImportHelp
 		}
@@ -476,6 +474,24 @@ func (g *Game) updateCommunityInput() {
 			g.communityPage = 0
 			return
 		}
+		if communityLibraryPacksTab().Contains(x, y) {
+			g.communityView = communityPacks
+			g.communityPage = 0
+			return
+		}
+		for slot, item := range g.communityPublished {
+			if slot >= 4 {
+				break
+			}
+			if communityPublishedPinButton(slot).Contains(x, y) {
+				promoteCommunityItem(item.Kind, item.ID)
+				return
+			}
+			if communityPublishedRemoveButton(slot).Contains(x, y) {
+				unpublishCommunityItem(item.Kind, item.ID)
+				return
+			}
+		}
 	case communityPublishSetup:
 		switch {
 		case communityPublishTitleField().Contains(x, y):
@@ -494,22 +510,10 @@ func (g *Game) updateCommunityInput() {
 		case communityPublishConfirmButton().Contains(x, y):
 			g.submitCommunityDraftPublish()
 		}
-		if communityLibraryPacksTab().Contains(x, y) {
-			g.communityView = communityPacks
-			g.communityPage = 0
-			return
-		}
-		for slot, item := range g.communityPublished {
-			if slot >= 4 {
-				break
-			}
-			if communityPublishedPinButton(slot).Contains(x, y) {
-				promoteCommunityItem(item.Kind, item.ID)
-				return
-			}
-			if communityPublishedRemoveButton(slot).Contains(x, y) {
-				unpublishCommunityItem(item.Kind, item.ID)
-				return
+	case communityImportPreview:
+		if communityImportConfirmButton().Contains(x, y) {
+			if err := g.importCommunityPack(g.communityImportRaw); err != nil {
+				g.showCommunityNotice("import failed: " + err.Error())
 			}
 		}
 	case communityPackBuild:
@@ -600,6 +604,10 @@ func (g *Game) submitCommunitySignIn() {
 func (g *Game) communityBack() {
 	if g.communityView == communityPublishSetup {
 		g.communityView = communityMyArt
+		return
+	}
+	if g.communityView == communityImportPreview {
+		g.communityView = communityCreate
 		return
 	}
 	if g.communityView == communityImportHelp {
