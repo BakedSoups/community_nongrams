@@ -443,9 +443,10 @@ func (g *Game) drawCommunityMyArt(screen *ebiten.Image) {
 func drawCommunityBackdrop(screen *ebiten.Image) {
 	screen.Fill(colPanel)
 	const pixelSize = 6
+	elapsed := float64(time.Now().UnixMilli()%240000) / 1000
 	for y := 0; y < 186; y += pixelSize {
 		for x := 0; x < ScreenWidth; x += pixelSize {
-			n := perlin2D(float64(x)/92, float64(y)/72)
+			n := perlin2D(float64(x)/92+elapsed*0.025, float64(y)/72+elapsed*0.009)
 			cloud := math.Max(0, math.Abs(n)-0.08) / 0.55
 			cloud = math.Min(1, cloud)
 			base := color.RGBA{14, 18, 27, 255}
@@ -465,9 +466,36 @@ func drawCommunityBackdrop(screen *ebiten.Image) {
 			}
 		}
 	}
+	drawCommunityShip(screen, shipPosition(elapsed, 17, 620), 20, false, color.RGBA{239, 235, 220, 255})
+	drawCommunityShip(screen, shipPosition(elapsed, 10, 700), 146, true, color.RGBA{235, 107, 86, 255})
+	drawCommunityShip(screen, shipPosition(elapsed+31, 7, 760), 118, false, color.RGBA{75, 143, 140, 255})
 	vector.DrawFilledRect(screen, 0, 176, ScreenWidth, 12, colGridHeavy, false)
 	drawRounded(screen, rect{x: 62, y: 32, w: 416, h: 92}, 8, color.RGBA{45, 45, 43, 255})
 	drawRounded(screen, rect{x: 76, y: 46, w: 388, h: 52}, 6, colWhite)
+}
+
+func shipPosition(elapsed, speed, distance float64) int {
+	return int(math.Mod(elapsed*speed, distance)) - 60
+}
+
+func drawCommunityShip(screen *ebiten.Image, x, y int, reverse bool, hull color.RGBA) {
+	direction := 1
+	if reverse {
+		x = ScreenWidth - x
+		direction = -1
+	}
+	px := func(offsetX, offsetY, width, height int, c color.Color) {
+		if direction < 0 {
+			offsetX = -offsetX - width
+		}
+		vector.DrawFilledRect(screen, float32(x+offsetX), float32(y+offsetY), float32(width), float32(height), c, false)
+	}
+	px(-18, -3, 12, 6, color.RGBA{244, 201, 93, 210})
+	px(-10, -5, 24, 10, hull)
+	px(8, -9, 12, 18, hull)
+	px(12, -4, 8, 8, color.RGBA{86, 115, 134, 255})
+	px(-2, -10, 8, 5, hull)
+	px(-2, 5, 8, 5, hull)
 }
 
 func perlin2D(x, y float64) float64 {
