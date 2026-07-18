@@ -37,7 +37,7 @@ begin
     from (
       select jsonb_build_object(
         'kind', 'art', 'id', level.id, 'ownerId', level.owner_id,
-        'creatorName', profile.display_name, 'title', version.title,
+        'creatorName', profile.display_name, 'avatarPuzzle', profile.avatar_puzzle, 'title', version.title,
         'description', version.description, 'likes', (select count(*) from public.likes where level_id = level.id),
         'liked', exists(select 1 from public.likes where level_id = level.id and user_id = auth.uid()),
         'owned', level.owner_id = auth.uid(),
@@ -57,7 +57,7 @@ begin
     from (
       select jsonb_build_object(
         'kind', 'pack', 'id', pack.id, 'ownerId', pack.owner_id,
-        'creatorName', profile.display_name, 'title', pack_version.title,
+        'creatorName', profile.display_name, 'avatarPuzzle', profile.avatar_puzzle, 'title', pack_version.title,
         'description', pack_version.description, 'likes', (select count(*) from public.pack_likes where pack_id = pack.id),
         'liked', exists(select 1 from public.pack_likes where pack_id = pack.id and user_id = auth.uid()),
         'owned', pack.owner_id = auth.uid(),

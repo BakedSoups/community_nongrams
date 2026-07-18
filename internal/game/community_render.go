@@ -65,23 +65,11 @@ func (g *Game) drawCommunity(screen *ebiten.Image) {
 
 func (g *Game) drawCommunityBrowse(screen *ebiten.Image) {
 	drawCenteredText(screen, "GALLERY", rect{x: 100, y: 190, w: 340, h: 28}, colInk)
-	drawButton(screen, communityGalleryAllButton(), "All")
-	drawButton(screen, communityGalleryArtButton(), "Art")
-	drawButton(screen, communityGalleryPacksButton(), "Packs")
-	drawButton(screen, communityGalleryNewButton(), "New")
-	drawButton(screen, communityGalleryTopButton(), "Top")
-	if g.galleryKind == "all" {
-		drawRectOutline(screen, communityGalleryAllButton(), 2, colAccent)
-	} else if g.galleryKind == "art" {
-		drawRectOutline(screen, communityGalleryArtButton(), 2, colAccent)
-	} else {
-		drawRectOutline(screen, communityGalleryPacksButton(), 2, colAccent)
-	}
-	if g.gallerySort == "new" {
-		drawRectOutline(screen, communityGalleryNewButton(), 2, colAccent)
-	} else {
-		drawRectOutline(screen, communityGalleryTopButton(), 2, colAccent)
-	}
+	drawGalleryFilterButton(screen, communityGalleryAllButton(), "All", g.galleryKind == "all")
+	drawGalleryFilterButton(screen, communityGalleryArtButton(), "Art", g.galleryKind == "art")
+	drawGalleryFilterButton(screen, communityGalleryPacksButton(), "Packs", g.galleryKind == "pack")
+	drawGalleryFilterButton(screen, communityGalleryNewButton(), "New", g.gallerySort == "new")
+	drawGalleryFilterButton(screen, communityGalleryTopButton(), "Top", g.gallerySort == "top")
 	if len(g.communityGallery) == 0 {
 		drawCenteredText(screen, "No published work yet", rect{x: 60, y: 346, w: 420, h: 40}, colMuted)
 		return
@@ -107,6 +95,9 @@ func (g *Game) drawCommunityBrowse(screen *ebiten.Image) {
 		}
 		drawText(screen, title, int(r.x+70), int(r.y+18), colInk)
 		drawText(screen, creator, int(r.x+70), int(r.y+41), colMuted)
+		if item.AvatarPuzzle != nil {
+			drawCommunityArtThumbnail(screen, item.AvatarPuzzle.RevealRaw, rect{x: r.x + r.w - 42, y: r.y + 5, w: 32, h: 26})
+		}
 		drawButton(screen, communityGalleryOpenButton(slot), map[bool]string{true: "open", false: "play"}[item.Kind == "pack"])
 		drawButton(screen, communityGalleryLikeButton(slot), fmt.Sprintf("+ %d", item.Likes))
 		if item.Owned {
@@ -119,6 +110,13 @@ func (g *Game) drawCommunityBrowse(screen *ebiten.Image) {
 	if (g.communityPage+1)*communityCatalogPerPage < len(g.communityGallery) {
 		drawButton(screen, communityNextButton(), "next")
 	}
+}
+
+func drawGalleryFilterButton(screen *ebiten.Image, r rect, label string, selected bool) {
+	if selected {
+		drawRounded(screen, inset(r, -3), 9, colAccent)
+	}
+	drawButton(screen, r, label)
 }
 
 func (g *Game) drawCommunityGalleryPack(screen *ebiten.Image) {
