@@ -62,7 +62,7 @@ lion_before
 lion_after
 ```
 
-Select the PNG and JSON together from **Community > Create > Import Sprite Sheet**. Frames must be square and 8, 10, 15, or 20 pixels. The importer turns every matching `_before` / `_after` pair into a separate draft. Before art is normalized to black and determines the nonogram solution; After art keeps its colors.
+Select the PNG and JSON together from **Community > My Library > + > Import Sprite Sheet**. Frames must be square and 8, 10, 15, or 20 pixels. The importer turns every matching `_before` / `_after` pair into a separate draft. Before art is normalized to black and determines the nonogram solution; After art keeps its colors.
 
 For a regular PNG without JSON, arrange any number of pairs horizontally (`Before, After`) or vertically (`Before` above `After`). The image dimensions must be exact multiples of the selected tile size. A single 1x2 pair works through the same importer.
 

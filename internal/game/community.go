@@ -24,6 +24,7 @@ const (
 	communityCreators
 	communityCreatorProfile
 	communityGalleryPack
+	communityImportHelp
 )
 
 func loadCommunityLibrary() community.Library {

@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	communityDraftsPerPage     = 6
+	communityDraftsPerPage     = 4
 	communityCatalogPerPage    = 4
 	communityPackDraftsPerPage = 4
 )
@@ -39,6 +39,8 @@ func (g *Game) drawCommunity(screen *ebiten.Image) {
 		g.drawCommunityCreatorProfile(screen)
 	case communityGalleryPack:
 		g.drawCommunityGalleryPack(screen)
+	case communityImportHelp:
+		g.drawCommunityImportHelp(screen)
 	default:
 		g.drawCommunityHome(screen)
 	}
@@ -128,13 +130,15 @@ func (g *Game) drawCommunityGalleryPack(screen *ebiten.Image) {
 }
 
 func (g *Game) drawCommunityPacks(screen *ebiten.Image) {
-	drawCenteredText(screen, "PACKS", rect{x: 100, y: 194, w: 340, h: 30}, colInk)
-	drawButton(screen, communityPackCreateButton(), "Create from My Art")
+	drawCenteredText(screen, "MY LIBRARY", rect{x: 100, y: 190, w: 340, h: 30}, colInk)
+	drawLibraryTabs(screen, false)
+	drawButton(screen, communityLibraryAddButton(), "+")
+	drawButton(screen, communityPackCreateButton(), "Create Pack")
 	for i, pack := range g.communityLibrary.Packs {
 		if i >= 4 {
 			break
 		}
-		r := rect{x: 70, y: 302 + float64(i)*66, w: 400, h: 52}
+		r := rect{x: 70, y: 328 + float64(i)*62, w: 400, h: 50}
 		drawRounded(screen, r, 6, colWhite)
 		drawRectOutline(screen, r, 2, colGridHeavy)
 		drawText(screen, pack.Title, int(r.x+14), int(r.y+18), colInk)
@@ -145,10 +149,8 @@ func (g *Game) drawCommunityPacks(screen *ebiten.Image) {
 }
 
 func (g *Game) drawCommunityHome(screen *ebiten.Image) {
-	drawButton(screen, communityLevelsButton(), "Gallery")
-	drawButton(screen, communityPacksButton(), "My Packs")
-	drawButton(screen, communityCreateButton(), "Create")
-	drawButton(screen, communityMyArtButton(), fmt.Sprintf("My Art  %d", len(g.communityLibrary.Drafts)))
+	drawButton(screen, communityLevelsButton(), "Community Gallery")
+	drawButton(screen, communityMyArtButton(), "My Library")
 	drawButton(screen, communityCreatorsButton(), "Creators")
 }
 
@@ -255,7 +257,24 @@ func (g *Game) drawCommunityCreate(screen *ebiten.Image) {
 	drawCenteredText(screen, "CREATE", rect{x: 100, y: 202, w: 340, h: 34}, colInk)
 	drawButton(screen, communityNewButton(), "New Drawing")
 	drawButton(screen, communityImportButton(), "Import Sprite Sheet")
-	drawCenteredText(screen, "PNG sheets or Aseprite PNG + JSON", rect{x: 70, y: 420, w: 400, h: 34}, colMuted)
+	drawButton(screen, communityCreatePackButton(), "Create Pack")
+	drawButton(screen, communityImportHelpButton(), "Import Instructions")
+}
+
+func (g *Game) drawCommunityImportHelp(screen *ebiten.Image) {
+	drawCenteredText(screen, "SPRITE SHEET IMPORT", rect{x: 48, y: 190, w: 444, h: 34}, colInk)
+	panel := rect{x: 48, y: 238, w: 444, h: 342}
+	drawRounded(screen, panel, 6, colWhite)
+	drawRectOutline(screen, panel, 2, colGridHeavy)
+	drawText(screen, "ANY DRAWING APP", 70, 270, colAccent)
+	drawText(screen, "1. Use 8, 10, 15, or 20 px squares", 70, 302, colInk)
+	drawText(screen, "2. Pair Before/After left-right or up-down", 70, 334, colInk)
+	drawText(screen, "3. Export one PNG sprite sheet", 70, 366, colInk)
+	drawText(screen, "Before is black. After keeps color.", 70, 404, colMuted)
+	drawText(screen, "ASEPRITE MULTI-ART", 70, 450, colAccent)
+	drawText(screen, "Export PNG + JSON (array data)", 70, 482, colInk)
+	drawText(screen, "Name: flower_before / flower_after", 70, 514, colInk)
+	drawText(screen, "Each named pair becomes one artwork.", 70, 546, colMuted)
 }
 
 func (g *Game) drawCommunitySignIn(screen *ebiten.Image) {
@@ -327,7 +346,9 @@ func (g *Game) drawCommunityPackBuilder(screen *ebiten.Image) {
 }
 
 func (g *Game) drawCommunityMyArt(screen *ebiten.Image) {
-	drawCenteredText(screen, "MY ART", rect{x: 100, y: 194, w: 340, h: 30}, colInk)
+	drawCenteredText(screen, "MY LIBRARY", rect{x: 100, y: 190, w: 340, h: 30}, colInk)
+	drawLibraryTabs(screen, true)
+	drawButton(screen, communityLibraryAddButton(), "+")
 	start := g.communityPage * communityDraftsPerPage
 	if start >= len(g.communityLibrary.Drafts) {
 		drawCenteredText(screen, "No drafts yet", rect{x: 80, y: 350, w: 380, h: 32}, colMuted)
@@ -358,6 +379,16 @@ func (g *Game) drawCommunityMyArt(screen *ebiten.Image) {
 	}
 	if (g.communityPage+1)*communityDraftsPerPage < len(g.communityLibrary.Drafts) {
 		drawButton(screen, communityNextButton(), "next")
+	}
+}
+
+func drawLibraryTabs(screen *ebiten.Image, art bool) {
+	drawButton(screen, communityLibraryArtTab(), "Art")
+	drawButton(screen, communityLibraryPacksTab(), "Packs")
+	if art {
+		drawRectOutline(screen, communityLibraryArtTab(), 2, colAccent)
+	} else {
+		drawRectOutline(screen, communityLibraryPacksTab(), 2, colAccent)
 	}
 }
 
@@ -394,20 +425,25 @@ func (g *Game) drawCommunityEmpty(screen *ebiten.Image, title, message string) {
 func communityBackButton() rect         { return rect{x: 202, y: 674, w: 136, h: 42} }
 func communityAccountButton() rect      { return rect{x: 322, y: 208, w: 98, h: 40} }
 func communityProfileBadgeButton() rect { return rect{x: 430, y: 198, w: 58, h: 58} }
-func communityLevelsButton() rect       { return rect{x: 128, y: 286, w: 284, h: 46} }
+func communityLevelsButton() rect       { return rect{x: 108, y: 314, w: 324, h: 50} }
 func communityPacksButton() rect        { return rect{x: 128, y: 348, w: 284, h: 46} }
 func communityCreateButton() rect       { return rect{x: 128, y: 410, w: 284, h: 46} }
-func communityMyArtButton() rect        { return rect{x: 128, y: 472, w: 284, h: 46} }
-func communityCreatorsButton() rect     { return rect{x: 128, y: 534, w: 284, h: 46} }
+func communityMyArtButton() rect        { return rect{x: 108, y: 388, w: 324, h: 50} }
+func communityCreatorsButton() rect     { return rect{x: 108, y: 462, w: 324, h: 50} }
 func communityNewButton() rect          { return rect{x: 104, y: 270, w: 332, h: 48} }
 func communityImportButton() rect       { return rect{x: 104, y: 338, w: 332, h: 48} }
+func communityCreatePackButton() rect   { return rect{x: 104, y: 406, w: 332, h: 48} }
+func communityImportHelpButton() rect   { return rect{x: 104, y: 474, w: 332, h: 48} }
+func communityLibraryArtTab() rect      { return rect{x: 70, y: 226, w: 142, h: 36} }
+func communityLibraryPacksTab() rect    { return rect{x: 216, y: 226, w: 142, h: 36} }
+func communityLibraryAddButton() rect   { return rect{x: 424, y: 226, w: 48, h: 36} }
 func communityDraftRect(slot int) rect {
 	return rect{x: 54, y: 234 + float64(slot)*88, w: 432, h: 74}
 }
 func communityMyArtRect(slot int) rect {
 	column := slot % 2
 	row := slot / 2
-	return rect{x: 44 + float64(column)*234, y: 228 + float64(row)*120, w: 218, h: 108}
+	return rect{x: 44 + float64(column)*234, y: 278 + float64(row)*136, w: 218, h: 120}
 }
 func communityMyArtBeforePreviewRect(slot int) rect {
 	r := communityMyArtRect(slot)
@@ -461,12 +497,12 @@ func communityCreatorLevelButtonAt(slot int, y float64) rect {
 	row := slot / 2
 	return rect{x: 46 + float64(column)*232, y: y + float64(row)*92, w: 216, h: 78}
 }
-func communityPackCreateButton() rect { return rect{x: 92, y: 240, w: 356, h: 44} }
+func communityPackCreateButton() rect { return rect{x: 92, y: 276, w: 356, h: 40} }
 func communityPackPlayButton(slot int) rect {
-	return rect{x: 316, y: 309 + float64(slot)*66, w: 62, h: 38}
+	return rect{x: 316, y: 334 + float64(slot)*62, w: 62, h: 38}
 }
 func communityPackPublishButton(slot int) rect {
-	return rect{x: 384, y: 309 + float64(slot)*66, w: 74, h: 38}
+	return rect{x: 384, y: 334 + float64(slot)*62, w: 74, h: 38}
 }
 func communityGoogleButton() rect   { return rect{x: 122, y: 370, w: 296, h: 42} }
 func communityEmailInput() rect     { return rect{x: 102, y: 434, w: 336, h: 44} }

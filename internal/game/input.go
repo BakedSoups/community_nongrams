@@ -251,10 +251,6 @@ func (g *Game) updateCommunityInput() {
 			g.communityView = communityBrowse
 			g.communityPage = 0
 			requestCommunityGallery(g.galleryKind, g.gallerySort)
-		case communityPacksButton().Contains(x, y):
-			g.communityView = communityPacks
-		case communityCreateButton().Contains(x, y):
-			g.communityView = communityCreate
 		case communityMyArtButton().Contains(x, y):
 			g.communityView = communityMyArt
 			g.communityPage = 0
@@ -274,8 +270,21 @@ func (g *Game) updateCommunityInput() {
 			if !requestCommunityImport() {
 				g.showCommunityNotice("import is available in the web build")
 			}
+		case communityCreatePackButton().Contains(x, y):
+			g.openPackBuilder()
+		case communityImportHelpButton().Contains(x, y):
+			g.communityView = communityImportHelp
 		}
 	case communityMyArt:
+		if communityLibraryPacksTab().Contains(x, y) {
+			g.communityView = communityPacks
+			g.communityPage = 0
+			return
+		}
+		if communityLibraryAddButton().Contains(x, y) {
+			g.communityView = communityCreate
+			return
+		}
 		start := g.communityPage * communityDraftsPerPage
 		for slot := 0; slot < communityDraftsPerPage; slot++ {
 			if communityDraftEditButton(slot).Contains(x, y) {
@@ -361,6 +370,15 @@ func (g *Game) updateCommunityInput() {
 			}
 		}
 	case communityPacks:
+		if communityLibraryArtTab().Contains(x, y) {
+			g.communityView = communityMyArt
+			g.communityPage = 0
+			return
+		}
+		if communityLibraryAddButton().Contains(x, y) {
+			g.communityView = communityCreate
+			return
+		}
 		if communityPackCreateButton().Contains(x, y) {
 			g.openPackBuilder()
 			return
@@ -461,6 +479,14 @@ func (g *Game) submitCommunitySignIn() {
 }
 
 func (g *Game) communityBack() {
+	if g.communityView == communityImportHelp {
+		g.communityView = communityCreate
+		return
+	}
+	if g.communityView == communityCreate {
+		g.communityView = communityMyArt
+		return
+	}
 	if g.communityView == communityGalleryPack {
 		g.communityView = communityBrowse
 		return
@@ -518,7 +544,7 @@ func (g *Game) updateEditorInput() {
 			return
 		}
 		_ = g.saveCurrentDraft(false)
-		g.communityView = communityCreate
+		g.communityView = communityMyArt
 		g.mode = screenCommunity
 		return
 	}
