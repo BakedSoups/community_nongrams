@@ -492,6 +492,7 @@ func (g *Game) drawCommunityPackSetup(screen *ebiten.Image) {
 		drawCommunityArtThumbnail(screen, g.packSetupPreviewRaw, rect{x: 242, y: 302, w: 56, h: 56})
 	}
 	drawButton(screen, communityPackUploadCoverButton(), "or upload cover")
+	drawButton(screen, communityPackQuestionCoverButton(), "use ?")
 	drawPublishField(screen, communityPackTitleField(), "Title", g.packSetupTitle, g.packSetupField == 0)
 	drawPublishField(screen, communityPackDescriptionField(), "Description", g.packSetupDescription, g.packSetupField == 1)
 	drawButton(screen, communityPackSaveDraftButton(), "Save Draft")
@@ -659,7 +660,8 @@ func (g *Game) drawCommunityPublishSetup(screen *ebiten.Image) {
 	}
 	drawCommunityArtThumbnail(screen, cover, rect{x: 154, y: 238, w: 94, h: 94})
 	drawButton(screen, communityPublishCoverButton(), "Upload cover")
-	drawPublishField(screen, communityPublishTitleField(), "Name", g.publishTitle, g.publishField == 0)
+	drawButton(screen, communityPublishQuestionCoverButton(), "Use ?")
+	drawPublishField(screen, communityPublishTitleField(), "Name - hint at what it is!", g.publishTitle, g.publishField == 0)
 	drawPublishField(screen, communityPublishDescriptionField(), "Description", g.publishDescription, g.publishField == 1)
 	drawPublishField(screen, communityPublishTagsField(), "Tags", g.publishTags, g.publishField == 2)
 	drawSelectedButton(screen, communityPublishOfficialButton(), checkboxLabel(g.publishSubmitOfficial, "Main game review"), g.publishSubmitOfficial)
@@ -754,13 +756,14 @@ func communityPublishedRemoveButton(slot int) rect {
 	r := communityPublishedRect(slot)
 	return rect{x: r.x + 344, y: r.y + 17, w: 88, h: 36}
 }
-func communityPublishTitleField() rect       { return rect{x: 270, y: 238, w: 220, h: 40} }
-func communityPublishDescriptionField() rect { return rect{x: 270, y: 300, w: 220, h: 40} }
-func communityPublishTagsField() rect        { return rect{x: 270, y: 362, w: 220, h: 40} }
-func communityPublishOfficialButton() rect   { return rect{x: 88, y: 426, w: 364, h: 40} }
-func communityPublishRightsButton() rect     { return rect{x: 88, y: 514, w: 364, h: 40} }
-func communityPublishConfirmButton() rect    { return rect{x: 170, y: 566, w: 200, h: 44} }
-func communityPublishCoverButton() rect      { return rect{x: 52, y: 346, w: 196, h: 38} }
+func communityPublishTitleField() rect          { return rect{x: 270, y: 238, w: 220, h: 40} }
+func communityPublishDescriptionField() rect    { return rect{x: 270, y: 300, w: 220, h: 40} }
+func communityPublishTagsField() rect           { return rect{x: 270, y: 362, w: 220, h: 40} }
+func communityPublishOfficialButton() rect      { return rect{x: 88, y: 426, w: 364, h: 40} }
+func communityPublishRightsButton() rect        { return rect{x: 88, y: 514, w: 364, h: 40} }
+func communityPublishConfirmButton() rect       { return rect{x: 170, y: 566, w: 200, h: 44} }
+func communityPublishCoverButton() rect         { return rect{x: 52, y: 346, w: 128, h: 38} }
+func communityPublishQuestionCoverButton() rect { return rect{x: 186, y: 346, w: 62, h: 38} }
 func communityImportPreviewRect(slot int) rect {
 	column := slot % 3
 	row := slot / 3
@@ -776,11 +779,12 @@ func communityPackSetupPreview(art int) rect {
 	row := art / 4
 	return rect{x: 82 + float64(column)*96, y: 238 + float64(row)*64, w: 56, h: 56}
 }
-func communityPackUploadCoverButton() rect  { return rect{x: 172, y: 342, w: 196, h: 30} }
-func communityPackTitleField() rect         { return rect{x: 76, y: 400, w: 388, h: 40} }
-func communityPackDescriptionField() rect   { return rect{x: 76, y: 466, w: 388, h: 40} }
-func communityPackSaveDraftButton() rect    { return rect{x: 76, y: 536, w: 184, h: 44} }
-func communityPackSetupPublishButton() rect { return rect{x: 280, y: 536, w: 184, h: 44} }
+func communityPackUploadCoverButton() rect   { return rect{x: 128, y: 342, w: 190, h: 30} }
+func communityPackQuestionCoverButton() rect { return rect{x: 324, y: 342, w: 88, h: 30} }
+func communityPackTitleField() rect          { return rect{x: 76, y: 400, w: 388, h: 40} }
+func communityPackDescriptionField() rect    { return rect{x: 76, y: 466, w: 388, h: 40} }
+func communityPackSaveDraftButton() rect     { return rect{x: 76, y: 536, w: 184, h: 44} }
+func communityPackSetupPublishButton() rect  { return rect{x: 280, y: 536, w: 184, h: 44} }
 func communityDraftRect(slot int) rect {
 	return rect{x: 54, y: 234 + float64(slot)*88, w: 432, h: 74}
 }

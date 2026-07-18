@@ -587,6 +587,8 @@ func (g *Game) updateCommunityInput() {
 		switch {
 		case communityPublishCoverButton().Contains(x, y):
 			requestCommunityCoverImport(10)
+		case communityPublishQuestionCoverButton().Contains(x, y):
+			g.publishPreviewRaw = communityQuestionCover()
 		case communityPublishTitleField().Contains(x, y):
 			g.publishField = 0
 		case communityPublishDescriptionField().Contains(x, y):
@@ -639,6 +641,10 @@ func (g *Game) updateCommunityInput() {
 	case communityPackSetup:
 		if communityPackUploadCoverButton().Contains(x, y) {
 			requestCommunityCoverImport(10)
+			return
+		}
+		if communityPackQuestionCoverButton().Contains(x, y) {
+			g.packSetupPreviewRaw = communityQuestionCover()
 			return
 		}
 		for art := 0; art < len(g.packSetupItems) && art < 8; art++ {

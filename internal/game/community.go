@@ -71,6 +71,17 @@ func (g *Game) startNewCommunityArt() {
 	g.newCommunityDraft(10, title)
 }
 
+func communityQuestionCover() [][]string {
+	rows := make([][]string, 10)
+	for y := range rows {
+		rows[y] = make([]string, 10)
+	}
+	for _, point := range [][2]int{{3, 2}, {4, 2}, {5, 2}, {6, 2}, {2, 3}, {7, 3}, {6, 4}, {5, 5}, {5, 6}, {5, 8}} {
+		rows[point[1]][point[0]] = "#484343FF"
+	}
+	return rows
+}
+
 func (g *Game) openProfileEditor() {
 	g.profileReturn = g.editor.clone()
 	g.profileDraftID = g.currentDraftID
