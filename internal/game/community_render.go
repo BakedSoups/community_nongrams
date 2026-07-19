@@ -409,58 +409,96 @@ func drawSocialField(screen *ebiten.Image, r rect, value string, active bool) {
 	badge := rect{x: r.x + 7, y: r.y + 7, w: 36, h: 24}
 	drawRounded(screen, badge, 3, colWhite)
 	drawRectOutline(screen, badge, 2, colGridHeavy)
-	label := socialIconLabel(value)
-	if label == "" {
-		label = "+"
-	}
-	drawCenteredText(screen, label, badge, colAccent)
+	drawSocialIcon(screen, badge, value)
 	display := value
 	if display == "" {
 		display = "social link or handle"
 		drawText(screen, display, int(r.x+52), int(r.y+25), colMuted)
+		if active {
+			drawTextCaret(screen, r.x+52, r.y+8, 20)
+		}
 		return
 	}
-	drawText(screen, truncateText(display, 26), int(r.x+52), int(r.y+25), colInk)
+	shown := truncateText(display, 26)
+	drawText(screen, shown, int(r.x+52), int(r.y+25), colInk)
+	if active {
+		drawTextCaret(screen, r.x+52+float64(len(shown))*8, r.y+8, 20)
+	}
 }
 
 func drawSocialChip(screen *ebiten.Image, r rect, value string) {
 	badge := rect{x: r.x, y: r.y, w: 30, h: r.h}
 	drawRounded(screen, badge, 3, colWhite)
 	drawRectOutline(screen, badge, 1, colAccent)
-	drawCenteredText(screen, socialIconLabel(value), badge, colAccent)
+	drawSocialIcon(screen, badge, value)
 	drawText(screen, truncateText(value, 25), int(r.x+38), int(r.y+16), colAccent)
 }
 
-func socialIconLabel(value string) string {
+func drawTextCaret(screen *ebiten.Image, x, y, h float64) {
+	if time.Now().UnixMilli()/450%2 == 1 {
+		return
+	}
+	vector.DrawFilledRect(screen, float32(x+1), float32(y), 2, float32(h), colAccent, false)
+}
+
+func drawSocialIcon(screen *ebiten.Image, r rect, value string) {
 	platform := socialPlatform(value)
 	if platform == "" {
 		if normalized, ok := normalizeProfileSocial(value); ok {
 			platform = socialPlatform(normalized)
 		}
 	}
+	x := float32(r.x)
+	y := float32(r.y)
+	w := float32(r.w)
+	h := float32(r.h)
+	c := colAccent
 	switch platform {
 	case "github":
-		return "GH"
+		vector.DrawFilledCircle(screen, x+w/2, y+h/2+1, h*0.30, c, false)
+		vector.DrawFilledRect(screen, x+w*0.28, y+h*0.22, w*0.12, h*0.16, c, false)
+		vector.DrawFilledRect(screen, x+w*0.60, y+h*0.22, w*0.12, h*0.16, c, false)
+		vector.DrawFilledRect(screen, x+w*0.38, y+h*0.72, w*0.24, h*0.12, c, false)
 	case "x":
-		return "X"
+		vector.StrokeLine(screen, x+w*0.30, y+h*0.25, x+w*0.70, y+h*0.75, 4, c, false)
+		vector.StrokeLine(screen, x+w*0.70, y+h*0.25, x+w*0.30, y+h*0.75, 4, c, false)
 	case "instagram":
-		return "IG"
+		vector.DrawFilledRect(screen, x+w*0.28, y+h*0.25, w*0.46, h*0.50, c, false)
+		vector.DrawFilledRect(screen, x+w*0.34, y+h*0.35, w*0.34, h*0.30, colWhite, false)
+		vector.DrawFilledCircle(screen, x+w*0.51, y+h*0.50, h*0.09, c, false)
+		vector.DrawFilledRect(screen, x+w*0.61, y+h*0.31, w*0.07, h*0.07, c, false)
 	case "tiktok":
-		return "TT"
+		vector.DrawFilledRect(screen, x+w*0.50, y+h*0.22, w*0.12, h*0.42, c, false)
+		vector.DrawFilledRect(screen, x+w*0.58, y+h*0.30, w*0.20, h*0.10, c, false)
+		vector.DrawFilledCircle(screen, x+w*0.42, y+h*0.68, h*0.14, c, false)
 	case "youtube":
-		return "YT"
+		vector.DrawFilledRect(screen, x+w*0.25, y+h*0.32, w*0.50, h*0.36, c, false)
+		vector.DrawFilledRect(screen, x+w*0.48, y+h*0.40, w*0.09, h*0.20, colWhite, false)
 	case "twitch":
-		return "TW"
+		vector.DrawFilledRect(screen, x+w*0.25, y+h*0.22, w*0.50, h*0.48, c, false)
+		vector.DrawFilledRect(screen, x+w*0.35, y+h*0.34, w*0.08, h*0.16, colWhite, false)
+		vector.DrawFilledRect(screen, x+w*0.56, y+h*0.34, w*0.08, h*0.16, colWhite, false)
+		vector.DrawFilledRect(screen, x+w*0.36, y+h*0.70, w*0.22, h*0.10, c, false)
 	case "bluesky":
-		return "BS"
+		vector.DrawFilledCircle(screen, x+w*0.40, y+h*0.42, h*0.16, c, false)
+		vector.DrawFilledCircle(screen, x+w*0.60, y+h*0.42, h*0.16, c, false)
+		vector.DrawFilledCircle(screen, x+w*0.50, y+h*0.62, h*0.14, c, false)
 	case "threads":
-		return "TH"
+		vector.DrawFilledCircle(screen, x+w*0.50, y+h*0.50, h*0.24, c, false)
+		vector.DrawFilledCircle(screen, x+w*0.50, y+h*0.50, h*0.15, colWhite, false)
+		vector.DrawFilledRect(screen, x+w*0.50, y+h*0.22, w*0.16, h*0.18, c, false)
 	case "mastodon":
-		return "MA"
+		vector.DrawFilledRect(screen, x+w*0.24, y+h*0.28, w*0.52, h*0.40, c, false)
+		vector.DrawFilledRect(screen, x+w*0.34, y+h*0.42, w*0.10, h*0.20, colWhite, false)
+		vector.DrawFilledRect(screen, x+w*0.56, y+h*0.42, w*0.10, h*0.20, colWhite, false)
 	case "linkedin":
-		return "IN"
+		vector.DrawFilledRect(screen, x+w*0.28, y+h*0.40, w*0.10, h*0.28, c, false)
+		vector.DrawFilledRect(screen, x+w*0.45, y+h*0.40, w*0.10, h*0.28, c, false)
+		vector.DrawFilledRect(screen, x+w*0.56, y+h*0.48, w*0.10, h*0.20, c, false)
+		vector.DrawFilledRect(screen, x+w*0.28, y+h*0.26, w*0.10, h*0.10, c, false)
 	default:
-		return ""
+		vector.StrokeLine(screen, x+w*0.34, y+h*0.50, x+w*0.66, y+h*0.50, 3, c, false)
+		vector.StrokeLine(screen, x+w*0.50, y+h*0.32, x+w*0.50, y+h*0.68, 3, c, false)
 	}
 }
 
@@ -508,12 +546,12 @@ func (g *Game) drawCommunityImportPreview(screen *ebiten.Image) {
 
 func (g *Game) drawCommunitySignIn(screen *ebiten.Image) {
 	drawCenteredText(screen, "ACCOUNT", rect{x: 100, y: 218, w: 340, h: 32}, colInk)
-	panel := rect{x: 72, y: 254, w: 396, h: 450}
+	panel := rect{x: 72, y: 254, w: 396, h: 406}
 	drawRounded(screen, panel, 6, colWhite)
 	drawRectOutline(screen, panel, 3, colGridHeavy)
 	if communitySignedIn() {
-		drawCommunityArtThumbnail(screen, g.profileArt.rawPixels(editorLayerAfter), rect{x: 226, y: 278, w: 88, h: 88})
-		drawCenteredText(screen, "Signed in", rect{x: 120, y: 374, w: 300, h: 30}, colInk)
+		drawCommunityArtThumbnail(screen, g.profileArt.rawPixels(editorLayerAfter), rect{x: 234, y: 272, w: 72, h: 72})
+		drawCenteredText(screen, "Signed in", rect{x: 120, y: 350, w: 300, h: 28}, colInk)
 		drawPublishField(screen, communityAccountNameField(), "Name", g.profileNameDraft, g.profileNameEditing)
 		drawPublishField(screen, communityAccountBioField(), "Bio", g.profileBioDraft, g.profileBioEditing)
 		for slot, social := range g.profileSocialDrafts {
@@ -855,6 +893,9 @@ func drawPublishField(screen *ebiten.Image, r rect, label, value string, active 
 		shown = shown[len(shown)-max:]
 	}
 	drawText(screen, shown, int(r.x+8), int(r.y+25), colInk)
+	if active {
+		drawTextCaret(screen, r.x+8+float64(len(shown))*8, r.y+10, 22)
+	}
 }
 
 func checkboxLabel(checked bool, text string) string {
@@ -1071,13 +1112,13 @@ func communityPackDeleteButton(slot int) rect {
 func communityGoogleButton() rect     { return rect{x: 122, y: 370, w: 296, h: 42} }
 func communityEmailInput() rect       { return rect{x: 102, y: 434, w: 336, h: 44} }
 func communitySendLinkButton() rect   { return rect{x: 142, y: 500, w: 256, h: 42} }
-func communityAccountNameField() rect { return rect{x: 102, y: 408, w: 336, h: 38} }
-func communityAccountBioField() rect  { return rect{x: 102, y: 466, w: 336, h: 38} }
+func communityAccountNameField() rect { return rect{x: 102, y: 390, w: 336, h: 36} }
+func communityAccountBioField() rect  { return rect{x: 102, y: 444, w: 336, h: 36} }
 func communityAccountSocialField(slot int) rect {
-	return rect{x: 102, y: 518 + float64(slot)*42, w: 336, h: 36}
+	return rect{x: 102, y: 494 + float64(slot)*38, w: 336, h: 34}
 }
-func communityAccountBioSaveButton() rect { return rect{x: 102, y: 646, w: 158, h: 42} }
-func communitySignOutButton() rect        { return rect{x: 280, y: 646, w: 158, h: 42} }
+func communityAccountBioSaveButton() rect { return rect{x: 102, y: 616, w: 158, h: 36} }
+func communitySignOutButton() rect        { return rect{x: 280, y: 616, w: 158, h: 36} }
 func communityPackDraftButton(slot int) rect {
 	return rect{x: 66, y: 246 + float64(slot)*72, w: 408, h: 64}
 }
