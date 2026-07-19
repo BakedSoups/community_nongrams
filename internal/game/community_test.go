@@ -49,6 +49,28 @@ func TestNormalizeProfileSocialAcceptsKnownLinks(t *testing.T) {
 	}
 }
 
+func TestNormalizeProfileSocialListCombinesThreeEntries(t *testing.T) {
+	got, ok := normalizeProfileSocialList([3]string{
+		"https://github.com/BakedSoups",
+		"https://x.com/pixaross",
+		"instagram: pixaross",
+	})
+	if !ok {
+		t.Fatal("social list was rejected")
+	}
+	want := "github: bakedsoups | x: pixaross | instagram: pixaross"
+	if got != want {
+		t.Fatalf("social list = %q, want %q", got, want)
+	}
+}
+
+func TestSplitProfileSocials(t *testing.T) {
+	got := splitProfileSocials("github: alex | x: pixel | instagram: art")
+	if got != [3]string{"github: alex", "x: pixel", "instagram: art"} {
+		t.Fatalf("split socials = %#v", got)
+	}
+}
+
 func TestAppendAllowedTextSanitizesPaste(t *testing.T) {
 	got, changed := appendAllowedText("hi", "\tthere\n世界!", 12, allowPrintableText)
 	if !changed {
@@ -104,6 +126,29 @@ func TestOpenChatAuthorProfileSelectsCreator(t *testing.T) {
 	}
 	if game.communityView != communityCreatorProfile || game.selectedCreator != 1 {
 		t.Fatalf("view = %v creator = %d, want profile index 1", game.communityView, game.selectedCreator)
+	}
+}
+
+func TestMarkCommunityItemUnpublishedClearsLocalArtStatus(t *testing.T) {
+	game := Game{
+		communityLibrary: community.Library{
+			Drafts: []community.LevelDraft{{
+				ID:         "art1",
+				Status:     community.LevelPublishedStatus,
+				Visibility: community.VisibilityPublic,
+			}},
+		},
+		communityPublished: []community.GalleryItem{{Kind: "art", ID: "art1"}},
+	}
+	game.markCommunityItemUnpublished("art", "art1")
+	if game.communityLibrary.Drafts[0].Status != community.LevelDraftStatus {
+		t.Fatalf("status = %q, want draft", game.communityLibrary.Drafts[0].Status)
+	}
+	if game.communityLibrary.Drafts[0].Visibility != community.VisibilityDraft {
+		t.Fatalf("visibility = %q, want draft", game.communityLibrary.Drafts[0].Visibility)
+	}
+	if len(game.communityPublished) != 0 {
+		t.Fatalf("published items = %d, want 0", len(game.communityPublished))
 	}
 }
 

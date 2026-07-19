@@ -281,6 +281,9 @@ func (g *Game) updateCommunityInput() {
 	if result := takeCommunityResult(); result != "" {
 		g.publishAwaitingID = ""
 		g.packPublishAwaitingID = ""
+		if strings.HasSuffix(result, " unpublished") {
+			g.markCommunityItemUnpublished(g.pendingUnpublishKind, g.pendingUnpublishID)
+		}
 		g.showCommunityNotice(result)
 	}
 	if raw := takeCommunityImport(); raw != "" {
@@ -312,8 +315,8 @@ func (g *Game) updateCommunityInput() {
 	if g.communityView == communitySignIn && communitySignedIn() && g.profileNameEditing {
 		g.profileNameDraft, _ = updateTextField(g.profileNameDraft, 40, allowPrintableText)
 	}
-	if g.communityView == communitySignIn && communitySignedIn() && g.profileSocialEditing {
-		g.profileSocialDraft, _ = updateTextField(g.profileSocialDraft, 160, allowPrintableText)
+	if g.communityView == communitySignIn && communitySignedIn() && g.profileSocialEditing && g.profileSocialSlot >= 0 && g.profileSocialSlot < len(g.profileSocialDrafts) {
+		g.profileSocialDrafts[g.profileSocialSlot], _ = updateTextField(g.profileSocialDrafts[g.profileSocialSlot], 120, allowPrintableText)
 	}
 	if g.communityView == communityChat {
 		g.chatDraft, _ = updateTextField(g.chatDraft, 220, allowPrintableText)
@@ -377,7 +380,8 @@ func (g *Game) updateCommunityInput() {
 	if g.communityView == communityHome && communityAccountButton().Contains(x, y) {
 		g.profileBioDraft = g.profileBio
 		g.profileNameDraft = g.profileName
-		g.profileSocialDraft = g.profileSocial
+		g.profileSocialDrafts = splitProfileSocials(g.profileSocial)
+		g.profileSocialSlot = -1
 		g.communityView = communitySignIn
 		return
 	}
@@ -616,6 +620,8 @@ func (g *Game) updateCommunityInput() {
 				return
 			}
 			if communityPublishedRemoveButton(slot).Contains(x, y) {
+				g.pendingUnpublishKind = item.Kind
+				g.pendingUnpublishID = item.ID
 				unpublishCommunityItem(item.Kind, item.ID)
 				return
 			}
@@ -709,17 +715,16 @@ func (g *Game) updateCommunityInput() {
 			switch {
 			case communityAccountNameField().Contains(x, y):
 				g.profileNameEditing, g.profileBioEditing, g.profileSocialEditing = true, false, false
+				g.profileSocialSlot = -1
 			case communityAccountBioField().Contains(x, y):
 				g.profileBioEditing, g.profileNameEditing, g.profileSocialEditing = true, false, false
-			case communityAccountSocialField().Contains(x, y):
-				g.profileSocialEditing, g.profileNameEditing, g.profileBioEditing = true, false, false
 			case communityAccountBioSaveButton().Contains(x, y):
 				name := strings.TrimSpace(g.profileNameDraft)
 				if name == "" {
 					g.showCommunityNotice("name is required")
 					return
 				}
-				social, ok := normalizeProfileSocial(g.profileSocialDraft)
+				social, ok := normalizeProfileSocialList(g.profileSocialDrafts)
 				if !ok {
 					g.showCommunityNotice("social: supported sites only")
 					return
@@ -736,9 +741,17 @@ func (g *Game) updateCommunityInput() {
 				g.profileBioEditing = false
 				g.profileNameEditing = false
 				g.profileSocialEditing = false
+				g.profileSocialSlot = -1
 			case communitySignOutButton().Contains(x, y):
 				requestCommunitySignOut()
 				g.communityView = communityHome
+			}
+			for slot := range g.profileSocialDrafts {
+				if communityAccountSocialField(slot).Contains(x, y) {
+					g.profileSocialEditing, g.profileNameEditing, g.profileBioEditing = true, false, false
+					g.profileSocialSlot = slot
+					return
+				}
 			}
 		} else {
 			switch {
@@ -997,6 +1010,68 @@ func normalizeProfileSocial(value string) (string, bool) {
 		value = value[:80]
 	}
 	return value, true
+}
+
+func splitProfileSocials(value string) [3]string {
+	var socials [3]string
+	parts := strings.Split(value, " | ")
+	for i := range socials {
+		if i >= len(parts) {
+			break
+		}
+		socials[i] = strings.TrimSpace(parts[i])
+	}
+	return socials
+}
+
+func countProfileSocials(value string) int {
+	count := 0
+	for _, social := range splitProfileSocials(value) {
+		if social != "" {
+			count++
+		}
+	}
+	return count
+}
+
+func normalizeProfileSocialList(values [3]string) (string, bool) {
+	socials := make([]string, 0, len(values))
+	seen := map[string]bool{}
+	for _, value := range values {
+		normalized, ok := normalizeProfileSocial(value)
+		if !ok {
+			return "", false
+		}
+		if normalized == "" {
+			continue
+		}
+		platform := socialPlatform(normalized)
+		if platform != "" {
+			if seen[platform] {
+				continue
+			}
+			seen[platform] = true
+		}
+		socials = append(socials, normalized)
+	}
+	result := strings.Join(socials, " | ")
+	if len(result) > 160 {
+		result = result[:160]
+	}
+	return result, true
+}
+
+func socialPlatform(value string) string {
+	prefix, _, ok := strings.Cut(strings.ToLower(strings.TrimSpace(value)), ":")
+	if !ok {
+		return ""
+	}
+	switch prefix {
+	case "x", "github", "instagram", "tiktok", "youtube", "twitch", "bluesky", "threads", "mastodon", "linkedin":
+		return prefix
+	default:
+		return ""
+	}
 }
 
 func normalizeProfileSocialLink(value string) (string, bool) {

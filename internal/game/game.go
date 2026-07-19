@@ -83,8 +83,9 @@ type Game struct {
 	profileBioDraft      string
 	profileBioEditing    bool
 	profileSocial        string
-	profileSocialDraft   string
+	profileSocialDrafts  [3]string
 	profileSocialEditing bool
+	profileSocialSlot    int
 	profileName          string
 	profileNameDraft     string
 	profileNameEditing   bool
@@ -120,6 +121,8 @@ type Game struct {
 	pendingDeleteKind      string
 	pendingDeleteID        string
 	pendingDeleteUntil     time.Time
+	pendingUnpublishKind   string
+	pendingUnpublishID     string
 	publishDraftID         string
 	publishTitle           string
 	publishDescription     string

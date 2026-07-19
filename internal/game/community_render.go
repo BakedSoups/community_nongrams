@@ -324,13 +324,17 @@ func (g *Game) drawCommunityCreatorProfile(screen *ebiten.Image) {
 	drawCommunityArtThumbnail(screen, avatar, rect{x: 54, y: 206, w: 82, h: 82})
 	drawText(screen, creator.DisplayName, 154, 242, colInk)
 	drawText(screen, fmt.Sprintf("%d published", len(creator.Levels)), 154, 269, colMuted)
-	if creator.Social != "" {
-		drawText(screen, truncateText(creator.Social, 34), 154, 292, colAccent)
+	socials := splitProfileSocials(creator.Social)
+	for slot, social := range socials {
+		if social == "" {
+			continue
+		}
+		drawSocialChip(screen, rect{x: 154, y: 292 + float64(slot)*24, w: 270, h: 20}, social)
 	}
 	if creator.Bio != "" {
 		nextY := 292
 		if creator.Social != "" {
-			nextY = 318
+			nextY = 292 + countProfileSocials(creator.Social)*24 + 8
 		}
 		drawWrappedText(screen, creator.Bio, 154, nextY, 34, 3, colMuted)
 	}
@@ -395,6 +399,71 @@ func (g *Game) drawCommunityAccount(screen *ebiten.Image) {
 	drawCommunityArtThumbnail(screen, pixels, communityProfileBadgeButton())
 }
 
+func drawSocialField(screen *ebiten.Image, r rect, value string, active bool) {
+	drawRounded(screen, r, 4, colPanel)
+	outline := colGridHeavy
+	if active {
+		outline = colAccent
+	}
+	drawRectOutline(screen, r, 2, outline)
+	badge := rect{x: r.x + 7, y: r.y + 7, w: 36, h: 24}
+	drawRounded(screen, badge, 3, colWhite)
+	drawRectOutline(screen, badge, 2, colGridHeavy)
+	label := socialIconLabel(value)
+	if label == "" {
+		label = "+"
+	}
+	drawCenteredText(screen, label, badge, colAccent)
+	display := value
+	if display == "" {
+		display = "social link or handle"
+		drawText(screen, display, int(r.x+52), int(r.y+25), colMuted)
+		return
+	}
+	drawText(screen, truncateText(display, 26), int(r.x+52), int(r.y+25), colInk)
+}
+
+func drawSocialChip(screen *ebiten.Image, r rect, value string) {
+	badge := rect{x: r.x, y: r.y, w: 30, h: r.h}
+	drawRounded(screen, badge, 3, colWhite)
+	drawRectOutline(screen, badge, 1, colAccent)
+	drawCenteredText(screen, socialIconLabel(value), badge, colAccent)
+	drawText(screen, truncateText(value, 25), int(r.x+38), int(r.y+16), colAccent)
+}
+
+func socialIconLabel(value string) string {
+	platform := socialPlatform(value)
+	if platform == "" {
+		if normalized, ok := normalizeProfileSocial(value); ok {
+			platform = socialPlatform(normalized)
+		}
+	}
+	switch platform {
+	case "github":
+		return "GH"
+	case "x":
+		return "X"
+	case "instagram":
+		return "IG"
+	case "tiktok":
+		return "TT"
+	case "youtube":
+		return "YT"
+	case "twitch":
+		return "TW"
+	case "bluesky":
+		return "BS"
+	case "threads":
+		return "TH"
+	case "mastodon":
+		return "MA"
+	case "linkedin":
+		return "IN"
+	default:
+		return ""
+	}
+}
+
 func (g *Game) drawCommunityCreate(screen *ebiten.Image) {
 	drawCenteredText(screen, "CREATE", rect{x: 100, y: 202, w: 340, h: 34}, colInk)
 	drawButton(screen, communityNewButton(), "Create New Art")
@@ -439,7 +508,7 @@ func (g *Game) drawCommunityImportPreview(screen *ebiten.Image) {
 
 func (g *Game) drawCommunitySignIn(screen *ebiten.Image) {
 	drawCenteredText(screen, "ACCOUNT", rect{x: 100, y: 218, w: 340, h: 32}, colInk)
-	panel := rect{x: 72, y: 254, w: 396, h: 380}
+	panel := rect{x: 72, y: 254, w: 396, h: 450}
 	drawRounded(screen, panel, 6, colWhite)
 	drawRectOutline(screen, panel, 3, colGridHeavy)
 	if communitySignedIn() {
@@ -447,7 +516,9 @@ func (g *Game) drawCommunitySignIn(screen *ebiten.Image) {
 		drawCenteredText(screen, "Signed in", rect{x: 120, y: 374, w: 300, h: 30}, colInk)
 		drawPublishField(screen, communityAccountNameField(), "Name", g.profileNameDraft, g.profileNameEditing)
 		drawPublishField(screen, communityAccountBioField(), "Bio", g.profileBioDraft, g.profileBioEditing)
-		drawPublishField(screen, communityAccountSocialField(), "Social link/handle", g.profileSocialDraft, g.profileSocialEditing)
+		for slot, social := range g.profileSocialDrafts {
+			drawSocialField(screen, communityAccountSocialField(slot), social, g.profileSocialEditing && g.profileSocialSlot == slot)
+		}
 		drawButton(screen, communityAccountBioSaveButton(), "save profile")
 		drawButton(screen, communitySignOutButton(), "sign out")
 		return
@@ -949,8 +1020,8 @@ func communityChatInputField() rect { return rect{x: 56, y: 564, w: 326, h: 42} 
 func communityChatSendButton() rect { return rect{x: 392, y: 564, w: 92, h: 42} }
 func communityCreatorProfileBaseContentY(social, bio string) float64 {
 	nextY := 292
-	if social != "" {
-		nextY = 318
+	if socialCount := countProfileSocials(social); socialCount > 0 {
+		nextY += socialCount*24 + 8
 	}
 	if bio != "" {
 		nextY += wrappedTextLineCount(bio, 34, 3)*20 + 18
@@ -997,14 +1068,16 @@ func communityPackDeleteButton(slot int) rect {
 	r := communityPackRect(slot)
 	return rect{x: r.x + 414, y: r.y + 14, w: 28, h: 36}
 }
-func communityGoogleButton() rect         { return rect{x: 122, y: 370, w: 296, h: 42} }
-func communityEmailInput() rect           { return rect{x: 102, y: 434, w: 336, h: 44} }
-func communitySendLinkButton() rect       { return rect{x: 142, y: 500, w: 256, h: 42} }
-func communityAccountNameField() rect     { return rect{x: 102, y: 408, w: 336, h: 38} }
-func communityAccountBioField() rect      { return rect{x: 102, y: 466, w: 336, h: 38} }
-func communityAccountSocialField() rect   { return rect{x: 102, y: 524, w: 336, h: 38} }
-func communityAccountBioSaveButton() rect { return rect{x: 102, y: 584, w: 158, h: 42} }
-func communitySignOutButton() rect        { return rect{x: 280, y: 584, w: 158, h: 42} }
+func communityGoogleButton() rect     { return rect{x: 122, y: 370, w: 296, h: 42} }
+func communityEmailInput() rect       { return rect{x: 102, y: 434, w: 336, h: 44} }
+func communitySendLinkButton() rect   { return rect{x: 142, y: 500, w: 256, h: 42} }
+func communityAccountNameField() rect { return rect{x: 102, y: 408, w: 336, h: 38} }
+func communityAccountBioField() rect  { return rect{x: 102, y: 466, w: 336, h: 38} }
+func communityAccountSocialField(slot int) rect {
+	return rect{x: 102, y: 518 + float64(slot)*42, w: 336, h: 36}
+}
+func communityAccountBioSaveButton() rect { return rect{x: 102, y: 646, w: 158, h: 42} }
+func communitySignOutButton() rect        { return rect{x: 280, y: 646, w: 158, h: 42} }
 func communityPackDraftButton(slot int) rect {
 	return rect{x: 66, y: 246 + float64(slot)*72, w: 408, h: 64}
 }

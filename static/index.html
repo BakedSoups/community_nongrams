@@ -441,7 +441,7 @@
 	  try {
 	    const response = await fetch(`${url}/rest/v1/rpc/save_creator_profile`, {
 	      method: "POST", headers: communityHeaders(session.access_token),
-	      body: JSON.stringify({ p_avatar_puzzle: JSON.parse(raw), p_bio: String(bio || "").slice(0, 120), p_display_name: String(displayName || "Creator").slice(0, 40), p_social: String(social || "").slice(0, 80) })
+	      body: JSON.stringify({ p_avatar_puzzle: JSON.parse(raw), p_bio: String(bio || "").slice(0, 120), p_display_name: String(displayName || "Creator").slice(0, 40), p_social: String(social || "").slice(0, 160) })
 	    });
 	    if (!response.ok) throw new Error((await response.json()).message || "Profile sync failed");
 	    window.requestCommunityCreators?.();

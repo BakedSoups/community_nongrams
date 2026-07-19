@@ -417,6 +417,48 @@ func (g *Game) markCommunityDraftPublished(id string) {
 	}
 }
 
+func (g *Game) markCommunityItemUnpublished(kind, id string) {
+	if kind == "" || id == "" {
+		return
+	}
+	changed := false
+	switch kind {
+	case "art":
+		for i := range g.communityLibrary.Drafts {
+			if g.communityLibrary.Drafts[i].ID != id {
+				continue
+			}
+			g.communityLibrary.Drafts[i].Status = community.LevelDraftStatus
+			g.communityLibrary.Drafts[i].Visibility = community.VisibilityDraft
+			g.communityLibrary.Drafts[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+			changed = true
+			break
+		}
+	case "pack":
+		for i := range g.communityLibrary.Packs {
+			if g.communityLibrary.Packs[i].ID != id {
+				continue
+			}
+			g.communityLibrary.Packs[i].Status = community.LevelDraftStatus
+			g.communityLibrary.Packs[i].Visibility = community.VisibilityDraft
+			g.communityLibrary.Packs[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+			changed = true
+			break
+		}
+	}
+	for i := 0; i < len(g.communityPublished); i++ {
+		if g.communityPublished[i].Kind == kind && g.communityPublished[i].ID == id {
+			g.communityPublished = append(g.communityPublished[:i], g.communityPublished[i+1:]...)
+			i--
+		}
+	}
+	if changed {
+		g.saveCommunityLibrary()
+	}
+	g.pendingUnpublishKind = ""
+	g.pendingUnpublishID = ""
+}
+
 func (g *Game) loadCommunityCatalog(raw string) error {
 	var versions []community.LevelVersion
 	if err := json.Unmarshal([]byte(raw), &versions); err != nil {
