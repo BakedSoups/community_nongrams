@@ -473,7 +473,7 @@ func drawSupportedSocialIcons(screen *ebiten.Image) {
 
 func drawProfilePreferenceRow(screen *ebiten.Image, x, y int, palette, favoriteColor string) {
 	if palette != "" {
-		drawText(screen, "favorite pallet", x, y+16, colMuted)
+		drawText(screen, "favorite palette", x, y+16, colMuted)
 		slots := profilePaletteSlots(palette)
 		for index, value := range slots {
 			if c, ok := parseEditorHexColor(value); ok {
@@ -484,12 +484,12 @@ func drawProfilePreferenceRow(screen *ebiten.Image, x, y int, palette, favoriteC
 		}
 	}
 	if favoriteColor != "" {
+		drawText(screen, "favorite color", x, y+40, colMuted)
 		if c, ok := parseEditorHexColor(favoriteColor); ok {
-			sw := rect{x: float64(x + 148), y: float64(y + 25), w: 18, h: 18}
+			sw := rect{x: float64(x + 126), y: float64(y + 25), w: 18, h: 18}
 			drawRounded(screen, sw, 3, c)
 			drawRectOutline(screen, sw, 2, colGridHeavy)
 		}
-		drawText(screen, "favorite color", x, y+40, colMuted)
 	}
 }
 
