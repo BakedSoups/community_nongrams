@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/alex/nongrampictures/internal/nonogram"
+	"github.com/BakedSoups/community_nongrams/internal/nonogram"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 

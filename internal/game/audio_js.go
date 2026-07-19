@@ -11,6 +11,13 @@ func setWebMusicMuted(muted bool) {
 	}
 }
 
+func setWebMusicMode(mode string) {
+	fn := js.Global().Get("setMusicMode")
+	if fn.Type() == js.TypeFunction {
+		fn.Invoke(mode)
+	}
+}
+
 func playWebSFX(name string) {
 	fn := js.Global().Get("playSFX")
 	if fn.Type() == js.TypeFunction {

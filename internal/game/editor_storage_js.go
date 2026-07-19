@@ -5,15 +5,40 @@ package game
 import "syscall/js"
 
 const (
-	editorPackKey       = "pixaross.editor.pack"
-	communityLibraryKey = "pixaross.community.library"
-	communityProfileKey = "pixaross.community.profile"
-	communityBioKey     = "pixaross.community.bio"
-	communitySocialKey  = "pixaross.community.social"
-	communityPaletteKey = "pixaross.community.palette"
-	communityColorKey   = "pixaross.community.favorite_color"
-	communityNameKey    = "pixaross.community.name"
+	editorPackKey       = "community_nongrams.editor.pack"
+	communityLibraryKey = "community_nongrams.community.library"
+	communityProfileKey = "community_nongrams.community.profile"
+	communityBioKey     = "community_nongrams.community.bio"
+	communitySocialKey  = "community_nongrams.community.social"
+	communityPaletteKey = "community_nongrams.community.palette"
+	communityColorKey   = "community_nongrams.community.favorite_color"
+	communityNameKey    = "community_nongrams.community.name"
 )
+
+func legacyStorageKey(suffix string) string {
+	return "pix" + "aross" + suffix
+}
+
+func loadStorageValue(key, legacySuffix string) string {
+	storage := js.Global().Get("localStorage")
+	if storage.IsUndefined() || storage.IsNull() {
+		return ""
+	}
+	value := storage.Call("getItem", key)
+	if !value.IsUndefined() && !value.IsNull() {
+		return value.String()
+	}
+	if legacySuffix == "" {
+		return ""
+	}
+	value = storage.Call("getItem", legacyStorageKey(legacySuffix))
+	if value.IsUndefined() || value.IsNull() {
+		return ""
+	}
+	text := value.String()
+	storage.Call("setItem", key, text)
+	return text
+}
 
 func saveCommunityProfile(raw string) bool {
 	storage := js.Global().Get("localStorage")
@@ -34,15 +59,7 @@ func saveCommunityBio(bio string) bool {
 }
 
 func loadCommunityBio() string {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return ""
-	}
-	value := storage.Call("getItem", communityBioKey)
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return loadStorageValue(communityBioKey, ".community.bio")
 }
 
 func saveCommunitySocial(social string) bool {
@@ -55,15 +72,7 @@ func saveCommunitySocial(social string) bool {
 }
 
 func loadCommunitySocial() string {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return ""
-	}
-	value := storage.Call("getItem", communitySocialKey)
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return loadStorageValue(communitySocialKey, ".community.social")
 }
 
 func saveCommunityPalette(palette string) bool {
@@ -76,15 +85,7 @@ func saveCommunityPalette(palette string) bool {
 }
 
 func loadCommunityPalette() string {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return ""
-	}
-	value := storage.Call("getItem", communityPaletteKey)
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return loadStorageValue(communityPaletteKey, ".community.palette")
 }
 
 func saveCommunityFavoriteColor(color string) bool {
@@ -97,15 +98,7 @@ func saveCommunityFavoriteColor(color string) bool {
 }
 
 func loadCommunityFavoriteColor() string {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return ""
-	}
-	value := storage.Call("getItem", communityColorKey)
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return loadStorageValue(communityColorKey, ".community.favorite_color")
 }
 
 func saveCommunityName(name string) bool {
@@ -118,12 +111,8 @@ func saveCommunityName(name string) bool {
 }
 
 func loadCommunityName() string {
-	storage := js.Global().Get("localStorage")
-	if !storage.IsUndefined() && !storage.IsNull() {
-		value := storage.Call("getItem", communityNameKey)
-		if !value.IsUndefined() && !value.IsNull() && value.String() != "" {
-			return value.String()
-		}
+	if value := loadStorageValue(communityNameKey, ".community.name"); value != "" {
+		return value
 	}
 	fn := js.Global().Get("communityDisplayName")
 	if !fn.IsUndefined() && !fn.IsNull() {
@@ -145,15 +134,7 @@ func takeTextPaste() string {
 }
 
 func loadCommunityProfile() string {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return ""
-	}
-	value := storage.Call("getItem", communityProfileKey)
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return loadStorageValue(communityProfileKey, ".community.profile")
 }
 
 func communityAccountLabel() string {
@@ -183,23 +164,15 @@ func saveCommunityData(raw string) bool {
 }
 
 func loadCommunityData() string {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return ""
-	}
-	raw := storage.Call("getItem", communityLibraryKey)
-	if raw.IsUndefined() || raw.IsNull() {
-		return ""
-	}
-	return raw.String()
+	return loadStorageValue(communityLibraryKey, ".community.library")
 }
 
-func requestCommunityImport() bool {
+func requestCommunityImport(size int, vertical bool) bool {
 	fn := js.Global().Get("requestCommunityImport")
 	if fn.IsUndefined() || fn.IsNull() {
 		return false
 	}
-	fn.Invoke()
+	fn.Invoke(size, vertical)
 	return true
 }
 
@@ -431,11 +404,32 @@ func postCommunityChat(kind, id, body string) bool {
 	return true
 }
 
-func recordCommunityPlay(levelID string) {
+func recordCommunityPlay(levelID string, completed bool) {
 	fn := js.Global().Get("recordCommunityPlay")
 	if !fn.IsUndefined() && !fn.IsNull() {
-		fn.Invoke(levelID)
+		fn.Invoke(levelID, completed)
 	}
+}
+
+func requestCommunityCompleted() bool {
+	fn := js.Global().Get("requestCommunityCompleted")
+	if fn.IsUndefined() || fn.IsNull() {
+		return false
+	}
+	fn.Invoke()
+	return true
+}
+
+func takeCommunityCompleted() string {
+	fn := js.Global().Get("takeCommunityCompleted")
+	if fn.IsUndefined() || fn.IsNull() {
+		return ""
+	}
+	value := fn.Invoke()
+	if value.IsUndefined() || value.IsNull() {
+		return ""
+	}
+	return value.String()
 }
 
 func requestCommunityPublished() bool {
@@ -465,6 +459,24 @@ func unpublishCommunityItem(kind, id string) bool {
 		return false
 	}
 	fn.Invoke(kind, id)
+	return true
+}
+
+func unpublishCommunityLocalArt(id string) bool {
+	fn := js.Global().Get("unpublishCommunityLocalArt")
+	if fn.IsUndefined() || fn.IsNull() {
+		return false
+	}
+	fn.Invoke(id)
+	return true
+}
+
+func updateCommunityPublishedItem(kind, id, title, description, levelsRaw string) bool {
+	fn := js.Global().Get("updateCommunityPublishedItem")
+	if fn.IsUndefined() || fn.IsNull() {
+		return false
+	}
+	fn.Invoke(kind, id, title, description, levelsRaw)
 	return true
 }
 

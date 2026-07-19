@@ -1,4 +1,4 @@
-project: nongrampictures
+project: community_nongrams
 
 game:
   package: ./cmd/game

@@ -1,4 +1,4 @@
-module github.com/alex/nongrampictures
+module github.com/BakedSoups/community_nongrams
 
 go 1.26.4
 

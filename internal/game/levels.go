@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alex/nongrampictures/internal/assets"
+	"github.com/BakedSoups/community_nongrams/internal/assets"
 )
 
 type levelInfo struct {

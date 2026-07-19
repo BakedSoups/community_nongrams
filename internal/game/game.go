@@ -6,9 +6,9 @@ import (
 	"math"
 	"time"
 
-	"github.com/alex/nongrampictures/internal/assets"
-	"github.com/alex/nongrampictures/internal/community"
-	"github.com/alex/nongrampictures/internal/nonogram"
+	"github.com/BakedSoups/community_nongrams/internal/assets"
+	"github.com/BakedSoups/community_nongrams/internal/community"
+	"github.com/BakedSoups/community_nongrams/internal/nonogram"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -44,6 +44,7 @@ type Game struct {
 	levelThumbs map[string][][]assets.PixelCell
 
 	audioEnabled      bool
+	communityMusicOn  bool
 	autoCorrect       bool
 	penaltyFlashUntil time.Time
 	correctFlashUntil time.Time
@@ -87,66 +88,80 @@ type Game struct {
 	profileSocialEditing bool
 	profileSocialSlot    int
 	profilePalette       string
+	profilePaletteSlot   int
 	profileColor         string
+	profileColorPicking  bool
 	profileName          string
 	profileNameDraft     string
 	profileNameEditing   bool
 
-	communityLibrary       community.Library
-	communityView          communityView
-	communityPage          int
-	communityCatalog       []community.LevelVersion
-	activeCommunityPack    string
-	packSelection          map[string]bool
-	communityEmail         string
-	communityCreators      []community.CreatorProfile
-	selectedCreator        int
-	communityPlayReturn    communityView
-	communityGallery       []community.GalleryItem
-	communityPublished     []community.GalleryItem
-	communityChatMessages  []community.ChatMessage
-	galleryKind            string
-	gallerySort            string
-	gallerySortOpen        bool
-	selectedGallery        int
-	chatKind               string
-	chatID                 string
-	chatTitle              string
-	chatDraft              string
-	chatReturn             communityView
-	pendingPublishID       string
-	pendingPublishAt       time.Time
-	publishAwaitingID      string
-	pendingPackPublishID   string
-	pendingPackPublishAt   time.Time
-	packPublishAwaitingID  string
-	pendingDeleteKind      string
-	pendingDeleteID        string
-	pendingDeleteUntil     time.Time
-	pendingUnpublishKind   string
-	pendingUnpublishID     string
-	publishDraftID         string
-	publishTitle           string
-	publishDescription     string
-	publishTags            string
-	publishField           int
-	publishSubmitOfficial  bool
-	publishRightsConfirmed bool
-	publishPreviewRaw      [][]string
-	communityImportRaw     string
-	communityImportPack    editorPack
-	newArtTitle            string
-	artSearch              string
-	artSearchActive        bool
-	packSetupID            string
-	packSetupTitle         string
-	packSetupDescription   string
-	packSetupItems         []community.PackItem
-	packSetupPreview       int
-	packSetupPreviewRaw    [][]string
-	packSetupField         int
-	communityNotice        string
-	communityNoticeUntil   time.Time
+	communityLibrary         community.Library
+	communityView            communityView
+	communityPage            int
+	communityCatalog         []community.LevelVersion
+	activeCommunityPack      string
+	packSelection            map[string]bool
+	communityEmail           string
+	communityCreators        []community.CreatorProfile
+	creatorSearch            string
+	creatorSearchActive      bool
+	selectedCreator          int
+	communityPlayReturn      communityView
+	communityGallery         []community.GalleryItem
+	communityPublished       []community.GalleryItem
+	communityCompleted       []community.GalleryItem
+	communityChatMessages    []community.ChatMessage
+	galleryKind              string
+	gallerySort              string
+	gallerySortOpen          bool
+	selectedGallery          int
+	chatKind                 string
+	chatID                   string
+	chatTitle                string
+	chatDraft                string
+	chatReturn               communityView
+	pendingPublishID         string
+	pendingPublishAt         time.Time
+	publishAwaitingID        string
+	pendingPackPublishID     string
+	pendingPackPublishAt     time.Time
+	packPublishAwaitingID    string
+	pendingDeleteKind        string
+	pendingDeleteID          string
+	pendingDeleteUntil       time.Time
+	pendingUnpublishKind     string
+	pendingUnpublishID       string
+	publishDraftID           string
+	publishTitle             string
+	publishDescription       string
+	publishTags              string
+	publishField             int
+	publishSubmitOfficial    bool
+	publishRightsConfirmed   bool
+	publishPreviewRaw        [][]string
+	communityImportRaw       string
+	communityImportPack      editorPack
+	importTileSize           int
+	importVerticalPairs      bool
+	newArtTitle              string
+	artSearch                string
+	artSearchActive          bool
+	packSetupID              string
+	packSetupTitle           string
+	packSetupDescription     string
+	packSetupItems           []community.PackItem
+	packSetupPreview         int
+	packSetupPreviewRaw      [][]string
+	packSetupField           int
+	publishedEditIndex       int
+	publishedEditKind        string
+	publishedEditID          string
+	publishedEditTitle       string
+	publishedEditDescription string
+	publishedEditField       int
+	publishedEditLevels      []community.LevelVersion
+	communityNotice          string
+	communityNoticeUntil     time.Time
 }
 
 type sparkle struct {
@@ -167,40 +182,42 @@ func New(puzzlePath string) (*Game, error) {
 	}
 
 	g := &Game{
-		puzzle:           loaded.Puzzle,
-		board:            nonogram.NewBoard(loaded.Puzzle.Width, loaded.Puzzle.Height),
-		rowClues:         nonogram.RowClues(loaded.Puzzle.Solution),
-		colClues:         nonogram.ColumnClues(loaded.Puzzle.Solution),
-		skeleton:         loaded.Skeleton,
-		reveal:           loaded.Reveal,
-		skeletonPixels:   loaded.SkeletonPixels,
-		revealPixels:     loaded.RevealPixels,
-		icons:            icons,
-		lastCellX:        -1,
-		lastCellY:        -1,
-		correctFlashX:    -1,
-		correctFlashY:    -1,
-		startTime:        time.Now(),
-		revealStart:      time.Now(),
-		audioEnabled:     true,
-		autoCorrect:      false,
-		mode:             screenMainMenu,
-		bestTimes:        loadBestTimes(),
-		levelThumbs:      loadLevelThumbs(),
-		editor:           initialEditor(),
-		profileArt:       initialProfileArt(),
-		profileBio:       loadCommunityBio(),
-		profileSocial:    loadCommunitySocial(),
-		profilePalette:   loadCommunityPalette(),
-		profileColor:     loadCommunityFavoriteColor(),
-		profileName:      loadCommunityName(),
-		communityLibrary: loadCommunityLibrary(),
-		selectedCreator:  -1,
-		selectedGallery:  -1,
-		galleryKind:      "all",
-		gallerySort:      "new",
-		editorLastX:      -1,
-		editorLastY:      -1,
+		puzzle:             loaded.Puzzle,
+		board:              nonogram.NewBoard(loaded.Puzzle.Width, loaded.Puzzle.Height),
+		rowClues:           nonogram.RowClues(loaded.Puzzle.Solution),
+		colClues:           nonogram.ColumnClues(loaded.Puzzle.Solution),
+		skeleton:           loaded.Skeleton,
+		reveal:             loaded.Reveal,
+		skeletonPixels:     loaded.SkeletonPixels,
+		revealPixels:       loaded.RevealPixels,
+		icons:              icons,
+		lastCellX:          -1,
+		lastCellY:          -1,
+		correctFlashX:      -1,
+		correctFlashY:      -1,
+		startTime:          time.Now(),
+		revealStart:        time.Now(),
+		audioEnabled:       true,
+		autoCorrect:        false,
+		mode:               screenMainMenu,
+		bestTimes:          loadBestTimes(),
+		levelThumbs:        loadLevelThumbs(),
+		editor:             initialEditor(),
+		profileArt:         initialProfileArt(),
+		profileBio:         loadCommunityBio(),
+		profileSocial:      loadCommunitySocial(),
+		profilePalette:     loadCommunityPalette(),
+		profilePaletteSlot: -1,
+		profileColor:       loadCommunityFavoriteColor(),
+		profileName:        loadCommunityName(),
+		communityLibrary:   loadCommunityLibrary(),
+		selectedCreator:    -1,
+		selectedGallery:    -1,
+		galleryKind:        "all",
+		gallerySort:        "new",
+		importTileSize:     10,
+		editorLastX:        -1,
+		editorLastY:        -1,
 	}
 	g.sparkles = makeSparkles()
 	g.syncCommunityProfileArt()
@@ -257,8 +274,22 @@ func loadLevelThumbs() map[string][][]assets.PixelCell {
 
 func (g *Game) Update() error {
 	g.layout = calculateLayout(g.puzzle.Width, g.puzzle.Height)
+	g.updateMusicMode()
 	g.updateInput()
 	return nil
+}
+
+func (g *Game) updateMusicMode() {
+	communityOn := g.mode == screenCommunity
+	if g.communityMusicOn == communityOn {
+		return
+	}
+	g.communityMusicOn = communityOn
+	if communityOn {
+		setWebMusicMode("community")
+	} else {
+		setWebMusicMode("default")
+	}
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
@@ -396,7 +427,7 @@ func (g *Game) saveEditor() {
 
 func (g *Game) exportEditor() {
 	clearEditorTitle()
-	if exportEditorImage("pixaross-art.jpg", g.editor.imageExportJSON()) {
+	if exportEditorImage("community_nongrams-art.jpg", g.editor.imageExportJSON()) {
 		g.showMenuNotice("exported")
 		return
 	}
@@ -525,6 +556,11 @@ func (g *Game) completePuzzle() {
 			g.bestTimes[g.puzzle.ID] = g.completedIn
 			saveBest(g.puzzle.ID, g.completedIn)
 		}
+		if g.communityPlayReturn == communityBrowse || g.communityPlayReturn == communityGalleryPack || g.communityPlayReturn == communityCreatorProfile {
+			recordCommunityPlay(g.puzzle.ID, true)
+			g.markCommunityLevelCompleted(g.puzzle.ID)
+			requestCommunityCompleted()
+		}
 	}
 	g.mode = screenReveal
 	if g.editorPreview {
@@ -539,7 +575,7 @@ func (g *Game) completePuzzle() {
 
 func (g *Game) showMenuNotice(text string) {
 	g.menuNotice = text
-	g.menuNoticeUntil = time.Now().Add(900 * time.Millisecond)
+	g.menuNoticeUntil = time.Now().Add(1800 * time.Millisecond)
 }
 
 func makeSparkles() []sparkle {

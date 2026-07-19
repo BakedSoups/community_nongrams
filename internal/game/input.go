@@ -6,7 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alex/nongrampictures/internal/nonogram"
+	"github.com/BakedSoups/community_nongrams/internal/community"
+	"github.com/BakedSoups/community_nongrams/internal/nonogram"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
@@ -263,6 +264,11 @@ func (g *Game) updateCommunityInput() {
 			g.showCommunityNotice("could not load published work")
 		}
 	}
+	if raw := takeCommunityCompleted(); raw != "" {
+		if err := g.loadCommunityCompleted(raw); err != nil {
+			g.showCommunityNotice("could not load completed levels")
+		}
+	}
 	if raw := takeCommunityCreators(); raw != "" {
 		if err := g.loadCommunityCreators(raw); err != nil {
 			g.showCommunityNotice("could not load creators")
@@ -310,7 +316,7 @@ func (g *Game) updateCommunityInput() {
 		}
 	}
 	if g.communityView == communitySignIn && communitySignedIn() && g.profileBioEditing {
-		g.profileBioDraft, _ = updateTextField(g.profileBioDraft, 120, allowPrintableText)
+		g.profileBioDraft, _ = updateTextField(g.profileBioDraft, 50, allowPrintableText)
 	}
 	if g.communityView == communitySignIn && communitySignedIn() && g.profileNameEditing {
 		g.profileNameDraft, _ = updateTextField(g.profileNameDraft, 40, allowPrintableText)
@@ -350,9 +356,24 @@ func (g *Game) updateCommunityInput() {
 			g.packSetupDescription, _ = updateTextField(g.packSetupDescription, 200, allowPrintableText)
 		}
 	}
+	if g.communityView == communityPublishedEdit {
+		if g.publishedEditField == 0 {
+			g.publishedEditTitle, _ = updateTextField(g.publishedEditTitle, 80, allowPrintableText)
+		}
+		if g.publishedEditField == 1 {
+			g.publishedEditDescription, _ = updateTextField(g.publishedEditDescription, 200, allowPrintableText)
+		}
+	}
 	if g.communityView == communityMyArt && g.artSearchActive {
 		var changed bool
 		g.artSearch, changed = updateTextField(g.artSearch, 60, allowPrintableText)
+		if changed {
+			g.communityPage = 0
+		}
+	}
+	if g.communityView == communityCreators && g.creatorSearchActive {
+		var changed bool
+		g.creatorSearch, changed = updateTextField(g.creatorSearch, 60, allowPrintableText)
 		if changed {
 			g.communityPage = 0
 		}
@@ -378,11 +399,12 @@ func (g *Game) updateCommunityInput() {
 		return
 	}
 	if g.communityView == communityHome && communityAccountButton().Contains(x, y) {
-		g.profileBioDraft = g.profileBio
+		g.profileBioDraft = truncateText(g.profileBio, 50)
 		g.profileNameDraft = g.profileName
 		g.profileSocialDrafts = splitProfileSocials(g.profileSocial)
 		g.profileSocialSlot = -1
 		g.communityView = communitySignIn
+		requestCommunityCompleted()
 		return
 	}
 	switch g.communityView {
@@ -400,6 +422,7 @@ func (g *Game) updateCommunityInput() {
 		case communityCreatorsButton().Contains(x, y):
 			g.communityView = communityCreators
 			g.selectedCreator = -1
+			g.creatorSearchActive = false
 			g.communityPage = 0
 			g.syncCommunityProfileArt()
 			requestCommunityCreators()
@@ -409,9 +432,7 @@ func (g *Game) updateCommunityInput() {
 		case communityNewButton().Contains(x, y):
 			g.openNewArtSetup()
 		case communityImportButton().Contains(x, y):
-			if !requestCommunityImport() {
-				g.showCommunityNotice("import is available in the web build")
-			}
+			g.communityView = communityImportSetup
 		case communityImportHelpButton().Contains(x, y):
 			g.communityView = communityImportHelp
 		}
@@ -449,6 +470,11 @@ func (g *Game) updateCommunityInput() {
 				return
 			}
 			if communityDraftPublishButton(slot).Contains(x, y) {
+				draft := g.communityLibrary.Drafts[index]
+				if draft.Status == community.LevelPublishedStatus {
+					g.showPublishedManagementNotice("art")
+					return
+				}
 				g.queueCommunityDraftPublish(index)
 				return
 			}
@@ -592,6 +618,10 @@ func (g *Game) updateCommunityInput() {
 				return
 			}
 			if communityPackPublishButton(slot).Contains(x, y) {
+				if slot < len(g.communityLibrary.Packs) && g.communityLibrary.Packs[slot].Status == community.LevelPublishedStatus {
+					g.showPublishedManagementNotice("pack")
+					return
+				}
 				g.queueLocalPackPublish(slot)
 				return
 			}
@@ -611,27 +641,62 @@ func (g *Game) updateCommunityInput() {
 			g.communityPage = 0
 			return
 		}
-		for slot, item := range g.communityPublished {
+		for slot := range g.communityPublished {
 			if slot >= 4 {
 				break
 			}
-			if communityPublishedPinButton(slot).Contains(x, y) {
-				promoteCommunityItem(item.Kind, item.ID)
-				return
-			}
 			if communityPublishedRemoveButton(slot).Contains(x, y) {
-				g.pendingUnpublishKind = item.Kind
-				g.pendingUnpublishID = item.ID
-				unpublishCommunityItem(item.Kind, item.ID)
+				g.openPublishedEditor(slot)
 				return
 			}
+		}
+	case communityPublishedEdit:
+		if g.publishedEditKind == "pack" {
+			for slot := 0; slot < len(g.publishedEditLevels) && slot < 8; slot++ {
+				if communityPublishedEditLevelRemoveButton(slot).Contains(x, y) {
+					g.removePublishedEditPackLevel(slot)
+					return
+				}
+			}
+			if communityPublishedEditAddLevelButton().Contains(x, y) {
+				g.openPublishedPackAdd()
+				return
+			}
+		}
+		switch {
+		case communityPublishedEditTitleField().Contains(x, y):
+			g.publishedEditField = 0
+		case communityPublishedEditDescriptionField().Contains(x, y):
+			g.publishedEditField = 1
+		case communityPublishedApplyButton().Contains(x, y):
+			g.applyPublishedEdit()
+		case communityPublishedUnpublishButton().Contains(x, y):
+			g.pendingUnpublishKind = g.publishedEditKind
+			g.pendingUnpublishID = g.publishedEditID
+			unpublishCommunityItem(g.publishedEditKind, g.publishedEditID)
+		}
+	case communityPublishedPackAdd:
+		start := g.communityPage * communityPackDraftsPerPage
+		for slot := 0; slot < communityPackDraftsPerPage; slot++ {
+			if communityPackDraftButton(slot).Contains(x, y) {
+				g.addPublishedEditPackDraft(start + slot)
+				return
+			}
+		}
+		if communityPrevButton().Contains(x, y) && g.communityPage > 0 {
+			g.communityPage--
+		}
+		if communityNextButton().Contains(x, y) && (g.communityPage+1)*communityPackDraftsPerPage < len(g.communityLibrary.Drafts) {
+			g.communityPage++
 		}
 	case communityPublishSetup:
 		switch {
 		case communityPublishCoverButton().Contains(x, y):
 			requestCommunityCoverImport(10)
-		case communityPublishQuestionCoverButton().Contains(x, y):
+		case communityPublishFinalCoverButton().Contains(x, y):
 			g.publishPreviewRaw = nil
+		case communityPublishQuestionCoverButton().Contains(x, y):
+			g.publishPreviewRaw = communityQuestionCover()
 		case communityPublishTitleField().Contains(x, y):
 			g.publishField = 0
 		case communityPublishDescriptionField().Contains(x, y):
@@ -642,6 +707,8 @@ func (g *Game) updateCommunityInput() {
 			g.publishSubmitOfficial = !g.publishSubmitOfficial
 			if !g.publishSubmitOfficial {
 				g.publishRightsConfirmed = false
+			} else {
+				g.showCommunityNotice("main game review request added")
 			}
 		case communityPublishRightsButton().Contains(x, y) && g.publishSubmitOfficial:
 			g.publishRightsConfirmed = !g.publishRightsConfirmed
@@ -654,6 +721,23 @@ func (g *Game) updateCommunityInput() {
 		if communityImportConfirmButton().Contains(x, y) {
 			if err := g.importCommunityPack(g.communityImportRaw); err != nil {
 				g.showCommunityNotice("import failed: " + err.Error())
+			}
+		}
+	case communityImportSetup:
+		for index, size := range []int{8, 10, 15, 20, 32} {
+			if communityImportSizeButton(index).Contains(x, y) {
+				g.importTileSize = size
+				return
+			}
+		}
+		switch {
+		case communityImportHorizontalButton().Contains(x, y):
+			g.importVerticalPairs = false
+		case communityImportVerticalButton().Contains(x, y):
+			g.importVerticalPairs = true
+		case communityImportChooseButton().Contains(x, y):
+			if !requestCommunityImport(g.importTileSize, g.importVerticalPairs) {
+				g.showCommunityNotice("import is available in the web build")
 			}
 		}
 	case communityPackBuild:
@@ -687,8 +771,8 @@ func (g *Game) updateCommunityInput() {
 			return
 		}
 		if communityPackQuestionCoverButton().Contains(x, y) {
-			g.packSetupPreviewRaw = nil
-			g.packSetupPreview = 0
+			g.packSetupPreviewRaw = communityQuestionCover()
+			g.packSetupPreview = -1
 			return
 		}
 		for art := 0; art < len(g.packSetupItems) && art < 8; art++ {
@@ -712,18 +796,42 @@ func (g *Game) updateCommunityInput() {
 		}
 	case communitySignIn:
 		if communitySignedIn() {
+			if g.profilePaletteSlot >= 0 || g.profileColorPicking {
+				for index, value := range profileColorOptions {
+					if communityAccountColorSwatchButton(index).Contains(x, y) {
+						if g.profilePaletteSlot >= 0 {
+							g.profilePalette = setProfilePaletteSlot(g.profilePalette, g.profilePaletteSlot, value)
+							g.profilePaletteSlot = -1
+						} else {
+							g.profileColor = value
+							g.profileColorPicking = false
+						}
+						return
+					}
+				}
+			}
+			for index := 0; index < 4; index++ {
+				if communityAccountPaletteOptionButton(index).Contains(x, y) {
+					g.profilePaletteSlot = index
+					g.profileColorPicking = false
+					g.profileNameEditing, g.profileBioEditing, g.profileSocialEditing = false, false, false
+					g.profileSocialSlot = -1
+					return
+				}
+			}
 			switch {
 			case communityAccountNameField().Contains(x, y):
 				g.profileNameEditing, g.profileBioEditing, g.profileSocialEditing = true, false, false
 				g.profileSocialSlot = -1
+				g.profilePaletteSlot = -1
+				g.profileColorPicking = false
 			case communityAccountBioField().Contains(x, y):
 				g.profileBioEditing, g.profileNameEditing, g.profileSocialEditing = true, false, false
-			case communityAccountPaletteButton().Contains(x, y):
-				g.profilePalette = nextProfilePalette(g.profilePalette)
-				g.profileNameEditing, g.profileBioEditing, g.profileSocialEditing = false, false, false
-				g.profileSocialSlot = -1
+				g.profilePaletteSlot = -1
+				g.profileColorPicking = false
 			case communityAccountColorButton().Contains(x, y):
-				g.profileColor = nextProfileColor(g.profileColor)
+				g.profileColorPicking = true
+				g.profilePaletteSlot = -1
 				g.profileNameEditing, g.profileBioEditing, g.profileSocialEditing = false, false, false
 				g.profileSocialSlot = -1
 			case communityAccountBioSaveButton().Contains(x, y):
@@ -738,7 +846,7 @@ func (g *Game) updateCommunityInput() {
 					return
 				}
 				g.profileName = name
-				g.profileBio = strings.TrimSpace(g.profileBioDraft)
+				g.profileBio = truncateText(strings.TrimSpace(g.profileBioDraft), 50)
 				g.profileSocial = social
 				g.saveCommunityProfileDetails()
 				if raw, err := json.Marshal(g.profileArt.puzzle()); err == nil {
@@ -748,6 +856,7 @@ func (g *Game) updateCommunityInput() {
 				g.profileNameEditing = false
 				g.profileSocialEditing = false
 				g.profileSocialSlot = -1
+				g.showCommunityNotice("profile saved")
 			case communitySignOutButton().Contains(x, y):
 				requestCommunitySignOut()
 				g.communityView = communityHome
@@ -770,10 +879,16 @@ func (g *Game) updateCommunityInput() {
 			}
 		}
 	case communityCreators:
+		if communityCreatorSearchField().Contains(x, y) {
+			g.creatorSearchActive = true
+			return
+		}
+		g.creatorSearchActive = false
+		indexes := g.filteredCommunityCreatorIndexes()
 		start := g.communityPage * communityCreatorsPerPage
-		for slot := 0; slot < communityCreatorsPerPage && start+slot < len(g.communityCreators); slot++ {
+		for slot := 0; slot < communityCreatorsPerPage && start+slot < len(indexes); slot++ {
 			if communityCreatorButton(slot).Contains(x, y) {
-				g.selectedCreator = start + slot
+				g.selectedCreator = indexes[start+slot]
 				g.communityPage = 0
 				g.communityView = communityCreatorProfile
 				return
@@ -782,7 +897,7 @@ func (g *Game) updateCommunityInput() {
 		if communityPrevButton().Contains(x, y) && g.communityPage > 0 {
 			g.communityPage--
 		}
-		if communityNextButton().Contains(x, y) && (g.communityPage+1)*4 < len(g.communityCreators) {
+		if communityNextButton().Contains(x, y) && (g.communityPage+1)*communityCreatorsPerPage < len(indexes) {
 			g.communityPage++
 		}
 	case communityCreatorProfile:
@@ -843,7 +958,19 @@ func (g *Game) communityBack() {
 		g.communityView = communityMyArt
 		return
 	}
+	if g.communityView == communityPublishedEdit {
+		g.communityView = communityPublished
+		return
+	}
+	if g.communityView == communityPublishedPackAdd {
+		g.communityView = communityPublishedEdit
+		return
+	}
 	if g.communityView == communityImportPreview {
+		g.communityView = communityCreate
+		return
+	}
+	if g.communityView == communityImportSetup {
 		g.communityView = communityCreate
 		return
 	}
@@ -1082,7 +1209,7 @@ func socialPlatform(value string) string {
 
 var profilePaletteOptions = []string{"classic", "space", "candy", "mono"}
 
-var profileColorOptions = []string{"#A35A4D", "#4B8F8C", "#F4C95D", "#566F86", "#2D2D2B"}
+var profileColorOptions = []string{"#A35A4D", "#4B8F8C", "#F4C95D", "#566F86", "#2D2D2B", "#EB6B56", "#C766A4", "#FFFFFF", "#000000"}
 
 func nextProfilePalette(current string) string {
 	if current == "" {

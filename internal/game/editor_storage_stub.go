@@ -36,7 +36,7 @@ func saveCommunityData(string) bool { return false }
 
 func loadCommunityData() string { return "" }
 
-func requestCommunityImport() bool { return false }
+func requestCommunityImport(int, bool) bool { return false }
 
 func takeCommunityImport() string { return "" }
 
@@ -84,13 +84,21 @@ func takeCommunityChat() string { return "" }
 
 func postCommunityChat(string, string, string) bool { return false }
 
-func recordCommunityPlay(string) {}
+func recordCommunityPlay(string, bool) {}
+
+func requestCommunityCompleted() bool { return false }
+
+func takeCommunityCompleted() string { return "" }
 
 func requestCommunityPublished() bool { return false }
 
 func takeCommunityPublished() string { return "" }
 
 func unpublishCommunityItem(string, string) bool { return false }
+
+func unpublishCommunityLocalArt(string) bool { return false }
+
+func updateCommunityPublishedItem(string, string, string, string, string) bool { return false }
 
 func toggleCommunityLike(string, string) bool { return false }
 

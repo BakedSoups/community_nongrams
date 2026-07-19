@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Nonogram Pictures</title>
+  <title>Community Nongrams</title>
   <style>
     html,
     body {
@@ -53,12 +53,19 @@
   <script src="howler.min.js"></script>
   <script src="wasm_exec.js"></script>
   <script>
-    const music = new Howl({
+    const defaultMusic = new Howl({
       src: ["audio/tunetank-lounge-jazz-elevator-music-348999.mp3"],
       loop: true,
       volume: 0.35,
       html5: true
     });
+    const communityMusic = new Howl({
+      src: ["audio/ikoliks_aj-lounge-elevator-music-332339.mp3"],
+      loop: true,
+      volume: 0.35,
+      html5: true
+    });
+    let activeMusic = defaultMusic;
     const sfx = {
       pencil: new Howl({
         src: ["audio/u_o8xh7gwsrj-app_interface_click_2-476372.mp3"],
@@ -78,6 +85,14 @@
       })
     };
     window.setMusicMuted = (muted) => Howler.mute(muted);
+    window.setMusicMode = (mode) => {
+      const nextMusic = mode === "community" ? communityMusic : defaultMusic;
+      if (activeMusic === nextMusic) return;
+      const shouldPlay = activeMusic.playing();
+      activeMusic.pause();
+      activeMusic = nextMusic;
+      if (shouldPlay && !activeMusic.playing()) activeMusic.play();
+    };
     window.playSFX = (name) => {
       const sound = sfx[name];
       if (sound) {
@@ -107,7 +122,7 @@
       });
       const link = document.createElement("a");
       link.href = canvas.toDataURL("image/jpeg", 0.95);
-      link.download = filename || "pixaross-art.jpg";
+      link.download = filename || "community_nongrams-art.jpg";
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -128,32 +143,60 @@
 	window.__pendingCommunityPublishedPackID = "";
 	window.__pendingTextPaste = "";
 	const clipboardTarget = document.getElementById("clipboard");
+	const focusGameCanvas = () => {
+	  const canvas = document.querySelector("canvas");
+	  if (!canvas) return;
+	  canvas.tabIndex = 0;
+	  canvas.focus({ preventScroll: true });
+	};
+	const installCanvasFocus = () => {
+	  const canvas = document.querySelector("canvas");
+	  if (!canvas) return;
+	  canvas.tabIndex = 0;
+	  canvas.addEventListener("pointerdown", () => canvas.focus({ preventScroll: true }));
+	};
+	new MutationObserver(installCanvasFocus).observe(document.body, { childList: true });
 	clipboardTarget.addEventListener("paste", (event) => {
 	  const text = event.clipboardData?.getData("text/plain") || "";
 	  if (!text) return;
 	  window.__pendingTextPaste = text;
 	  clipboardTarget.value = "";
+	  setTimeout(focusGameCanvas, 0);
 	  event.preventDefault();
 	});
 	window.addEventListener("paste", (event) => {
 	  const text = event.clipboardData?.getData("text/plain") || "";
 	  if (!text) return;
 	  window.__pendingTextPaste = text;
+	  setTimeout(focusGameCanvas, 0);
 	  event.preventDefault();
-	});
+	}, true);
 	window.addEventListener("keydown", (event) => {
 	  if (!(event.key?.toLowerCase() === "v" && (event.ctrlKey || event.metaKey))) return;
+	  event.preventDefault();
+	  event.stopImmediatePropagation();
+	  clipboardTarget.value = "";
+	  clipboardTarget.focus({ preventScroll: true });
 	  if (!navigator.clipboard?.readText) return;
 	  navigator.clipboard.readText().then((text) => {
-	    if (text) window.__pendingTextPaste = text;
+	    if (text) {
+	      window.__pendingTextPaste = text;
+	      focusGameCanvas();
+	    }
 	  }).catch(() => {});
-	});
+	}, true);
+	window.addEventListener("beforeinput", (event) => {
+	  if (event.inputType !== "insertText" || event.data?.toLowerCase() !== "v") return;
+	  if (!(event.ctrlKey || event.metaKey)) return;
+	  event.preventDefault();
+	  event.stopImmediatePropagation();
+	}, true);
 	window.takeTextPaste = () => {
 	  const value = window.__pendingTextPaste || "";
 	  window.__pendingTextPaste = "";
 	  return value;
 	};
-	const communitySessionKey = "pixaross.community.session";
+	const communitySessionKey = "community_nongrams.community.session";
 	const communityConfig = () => ({
 	  url: String(window.SUPABASE_URL || "").replace(/\/$/, ""),
 	  key: String(window.SUPABASE_ANON_KEY || "")
@@ -307,14 +350,17 @@
 	  const { url, key } = communityConfig();
 	  if (!url || !key) return setCommunityResult("community cloud is not configured yet");
 	  const session = await validCommunitySession().catch((error) => { setCommunityResult(error.message); return null; });
-	  if (!session?.access_token) return setCommunityResult("sign in and publish each level before publishing a pack");
+	  if (!session?.access_token) return setCommunityResult("sign in before publishing a pack");
 	  try {
 	    const payload = JSON.parse(raw);
 	    const pack = payload.pack || payload;
+	    const drafts = new Map((payload.levels || []).map((level) => [level.id, level]));
+	    const levels = (pack.items || []).map((item) => drafts.get(item.levelId)).filter(Boolean);
+	    if (levels.length !== (pack.items || []).length) throw new Error("Pack is missing local art");
 	    const response = await fetch(`${url}/rest/v1/rpc/publish_pack`, {
 	      method: "POST",
 	      headers: communityHeaders(session.access_token),
-	      body: JSON.stringify({ p_title: pack.title || "My Pack", p_description: pack.description || "", p_level_local_ids: (pack.items || []).map((item) => item.levelId) })
+	      body: JSON.stringify({ p_title: pack.title || "My Pack", p_description: pack.description || "", p_levels: levels })
 	    });
 	    const body = await response.json();
 	    if (!response.ok) throw new Error(body.message || body.hint || "Pack publish failed");
@@ -441,7 +487,7 @@
 	  try {
 	    const response = await fetch(`${url}/rest/v1/rpc/save_creator_profile`, {
 	      method: "POST", headers: communityHeaders(session.access_token),
-	      body: JSON.stringify({ p_avatar_puzzle: JSON.parse(raw), p_bio: String(bio || "").slice(0, 120), p_display_name: String(displayName || "Creator").slice(0, 40), p_social: String(social || "").slice(0, 160), p_palette: String(palette || "").slice(0, 40), p_favorite_color: String(favoriteColor || "").slice(0, 9) })
+	      body: JSON.stringify({ p_avatar_puzzle: JSON.parse(raw), p_bio: String(bio || "").slice(0, 50), p_display_name: String(displayName || "Creator").slice(0, 40), p_social: String(social || "").slice(0, 160), p_palette: String(palette || "").slice(0, 40), p_favorite_color: String(favoriteColor || "").slice(0, 9) })
 	    });
 	    if (!response.ok) throw new Error((await response.json()).message || "Profile sync failed");
 	    window.requestCommunityCreators?.();
@@ -458,6 +504,26 @@
 	  const value = window.__pendingCommunityPublished || "";
 	  window.__pendingCommunityPublished = "";
 	  return value;
+	};
+	window.takeCommunityCompleted = () => {
+	  const value = window.__pendingCommunityCompleted || "";
+	  window.__pendingCommunityCompleted = "";
+	  return value;
+	};
+	window.requestCommunityCompleted = async () => {
+	  const { url, key } = communityConfig();
+	  const session = await validCommunitySession().catch(() => null);
+	  if (!url || !key || !session?.access_token) return;
+	  try {
+	    const response = await fetch(`${url}/rest/v1/rpc/browse_completed_levels`, {
+	      method: "POST", headers: communityHeaders(session.access_token), body: "{}"
+	    });
+	    const body = await response.json();
+	    if (!response.ok) throw new Error(body.message || "Could not load completed levels");
+	    window.__pendingCommunityCompleted = JSON.stringify(body || []);
+	  } catch (error) {
+	    setCommunityResult(error.message || "could not load completed levels");
+	  }
 	};
 	window.requestCommunityPublished = async () => {
 	  const { url, key } = communityConfig();
@@ -487,6 +553,38 @@
 	    window.requestCommunityPublished();
 	  } catch (error) { setCommunityResult(error.message || "could not unpublish item"); }
 	};
+	window.unpublishCommunityLocalArt = async (id) => {
+	  const { url } = communityConfig();
+	  const session = await validCommunitySession().catch((error) => { setCommunityResult(error.message); return null; });
+	  if (!session?.access_token) return setCommunityResult("sign in to manage published work");
+	  try {
+	    const response = await fetch(`${url}/rest/v1/rpc/unpublish_community_local_art`, {
+	      method: "POST", headers: communityHeaders(session.access_token),
+	      body: JSON.stringify({ p_local_id: id })
+	    });
+	    const body = await response.text();
+	    if (!response.ok) throw new Error(JSON.parse(body || "{}").message || "Could not unpublish item");
+	    setCommunityResult("art unpublished");
+	    window.requestCommunityPublished();
+	  } catch (error) { setCommunityResult(error.message || "could not unpublish item"); }
+	};
+	window.updateCommunityPublishedItem = async (kind, id, title, description, levelsRaw) => {
+	  const { url } = communityConfig();
+	  const session = await validCommunitySession().catch((error) => { setCommunityResult(error.message); return null; });
+	  if (!session?.access_token) return setCommunityResult("sign in to manage published work");
+	  try {
+	    const payload = { p_kind: kind, p_content_id: id, p_title: title, p_description: description || "" };
+	    if (kind === "pack" && levelsRaw) payload.p_levels = JSON.parse(levelsRaw);
+	    const response = await fetch(`${url}/rest/v1/rpc/update_published_content`, {
+	      method: "POST", headers: communityHeaders(session.access_token),
+	      body: JSON.stringify(payload)
+	    });
+	    const body = await response.text();
+	    if (!response.ok) throw new Error(JSON.parse(body || "{}").message || "Could not update published work");
+	    setCommunityResult("published changes applied");
+	    window.requestCommunityPublished();
+	  } catch (error) { setCommunityResult(error.message || "could not update published work"); }
+	};
 	window.requestCommunityGallery = async (kind, sort) => {
 	  window.__communityGalleryKind = kind;
 	  window.__communityGallerySort = sort;
@@ -510,16 +608,17 @@
 	    setCommunityResult(error.message || "could not load gallery");
 	  }
 	};
-	window.recordCommunityPlay = async (levelId) => {
+	window.recordCommunityPlay = async (levelId, completed) => {
 	  const { url, key } = communityConfig();
 	  if (!url || !key || !levelId) return;
 	  try {
 	    const session = await validCommunitySession().catch(() => null);
 	    const response = await fetch(`${url}/rest/v1/rpc/record_level_play`, {
 	      method: "POST", headers: communityHeaders(session?.access_token),
-	      body: JSON.stringify({ p_level_id: levelId })
+	      body: JSON.stringify({ p_level_id: levelId, p_completed: Boolean(completed) })
 	    });
 	    if (!response.ok) console.warn("play event skipped", await response.text());
+	    if (completed) window.requestCommunityCompleted?.();
 	  } catch (error) {
 	    console.warn("play event skipped", error);
 	  }
@@ -659,20 +758,24 @@
 	  const afterBg = pixelBackground(after);
 	  const skeletonPixels = [];
 	  const revealPixels = [];
+	  const beforePixels = [];
 	  const solution = [];
 	  for (let y = 0; y < size; y++) {
 	    const beforeRow = [];
 	    const afterRow = [];
+	    const previewRow = [];
 	    let solutionRow = "";
 	    for (let x = 0; x < size; x++) {
 	      const i = (y * size + x) * 4;
 	      const occupied = !isBackground(before, i, beforeBg);
 	      beforeRow.push(occupied ? "#000000FF" : "");
 	      solutionRow += occupied ? "1" : "0";
+	      previewRow.push(occupied ? rgba(before[i], before[i + 1], before[i + 2], before[i + 3]) : "");
 	      afterRow.push(isBackground(after, i, afterBg) ? "" : rgba(after[i], after[i + 1], after[i + 2], after[i + 3]));
 	    }
 	    skeletonPixels.push(beforeRow);
 	    revealPixels.push(afterRow);
+	    beforePixels.push(previewRow);
 	    solution.push(solutionRow);
 	  }
 	  return {
@@ -682,10 +785,13 @@
 	    height: size,
 	    solution,
 	    skeletonPixels,
-	    revealPixels
+	    revealPixels,
+	    beforePixels
 	  };
 	};
-	window.requestCommunityImport = () => {
+	window.requestCommunityImport = (tileSize, verticalPairs) => {
+	  window.__communityImportTileSize = Number(tileSize || 10);
+	  window.__communityImportVerticalPairs = Boolean(verticalPairs);
 	  const input = document.createElement("input");
 	  input.type = "file";
 	  input.multiple = true;
@@ -710,13 +816,13 @@
 	          const beforeFrame = frames.get(beforeName);
 	          const afterFrame = frames.get(afterName);
 	          if (beforeFrame.w !== beforeFrame.h || afterFrame.w !== afterFrame.h) return;
-	          if (![8, 10, 15, 20].includes(beforeFrame.w) || afterFrame.w !== beforeFrame.w) return;
+	          if (![8, 10, 15, 20, 32].includes(beforeFrame.w) || afterFrame.w !== beforeFrame.w) return;
 	          levels.push(puzzleFromPair(image, beforeFrame, afterFrame, beforeFrame.w, base.replace(/[_-]+/g, " "), index));
 	        });
 	      } else {
-	        const size = Number(prompt("Tile size: 8, 10, 15, or 20. A sheet may contain any number of Before/After pairs.", "10"));
-	        if (![8, 10, 15, 20].includes(size)) throw new Error("Unsupported tile size");
-	        const horizontal = !confirm("Choose OK for vertical pairs (Before above After). Choose Cancel for horizontal pairs (Before left of After).");
+	        const size = Number(window.__communityImportTileSize || 10);
+	        if (![8, 10, 15, 20, 32].includes(size)) throw new Error("Unsupported tile size");
+	        const horizontal = !window.__communityImportVerticalPairs;
 	        const columns = Math.floor(image.width / size);
 	        const rows = Math.floor(image.height / size);
 	        if (image.width % size || image.height % size) throw new Error("Sheet dimensions must be exact multiples of the tile size");
@@ -860,8 +966,8 @@
     };
 
     const startMusic = () => {
-      if (!music.playing()) {
-        music.play();
+      if (!activeMusic.playing()) {
+        activeMusic.play();
       }
       window.removeEventListener("pointerdown", startMusic);
       window.removeEventListener("keydown", startMusic);
@@ -876,6 +982,10 @@
     WebAssembly.instantiateStreaming(fetch(wasmPath, { cache: "no-store" }), go.importObject).then((result) => {
       document.getElementById("status").remove();
       go.run(result.instance);
+      setTimeout(() => {
+        installCanvasFocus();
+        focusGameCanvas();
+      }, 0);
     }).catch((err) => {
       document.getElementById("status").textContent = err;
       console.error(err);

@@ -3,8 +3,40 @@ package game
 import (
 	"testing"
 
-	"github.com/alex/nongrampictures/internal/community"
+	"github.com/BakedSoups/community_nongrams/internal/community"
+	"github.com/BakedSoups/community_nongrams/internal/nonogram"
 )
+
+func validPuzzle(id string, size int) *nonogram.Puzzle {
+	rows := make([]string, size)
+	before := make([][]string, size)
+	reveal := make([][]string, size)
+	for y := 0; y < size; y++ {
+		row := make([]byte, size)
+		before[y] = make([]string, size)
+		reveal[y] = make([]string, size)
+		for x := 0; x < size; x++ {
+			if x == y {
+				row[x] = '1'
+				reveal[y][x] = "#111111FF"
+			} else {
+				row[x] = '0'
+			}
+		}
+		rows[y] = string(row)
+	}
+	puzzle := &nonogram.Puzzle{
+		ID:          id,
+		Title:       id,
+		Width:       size,
+		Height:      size,
+		SolutionRaw: rows,
+		SkeletonRaw: before,
+		RevealRaw:   reveal,
+	}
+	_ = puzzle.ParseSolution()
+	return puzzle
+}
 
 func TestNormalizeProfileSocialRejectsUnknownLinks(t *testing.T) {
 	rejected := []string{
@@ -21,22 +53,22 @@ func TestNormalizeProfileSocialRejectsUnknownLinks(t *testing.T) {
 }
 
 func TestNormalizeProfileSocialAllowsHandles(t *testing.T) {
-	got, ok := normalizeProfileSocial("  instagram   @pixaross  ")
+	got, ok := normalizeProfileSocial("  instagram   @community_nongrams  ")
 	if !ok {
 		t.Fatal("handle was rejected")
 	}
-	if got != "instagram @pixaross" {
+	if got != "instagram @community_nongrams" {
 		t.Fatalf("handle = %q, want normalized text", got)
 	}
 }
 
 func TestNormalizeProfileSocialAcceptsKnownLinks(t *testing.T) {
 	tests := map[string]string{
-		"https://github.com/BakedSoups":                 "github: bakedsoups",
-		"https://twitter.com/pixaross":                  "x: pixaross",
-		"https://x.com/pixaross":                        "x: pixaross",
-		"https://instagram.com/pixaross/":               "instagram: pixaross",
-		"https://bsky.app/profile/pixaross.bsky.social": "bluesky: pixaross.bsky.social",
+		"https://github.com/BakedSoups":                           "github: bakedsoups",
+		"https://twitter.com/community_nongrams":                  "x: community_nongrams",
+		"https://x.com/community_nongrams":                        "x: community_nongrams",
+		"https://instagram.com/community_nongrams/":               "instagram: community_nongrams",
+		"https://bsky.app/profile/community_nongrams.bsky.social": "bluesky: community_nongrams.bsky.social",
 	}
 	for value, want := range tests {
 		got, ok := normalizeProfileSocial(value)
@@ -52,13 +84,13 @@ func TestNormalizeProfileSocialAcceptsKnownLinks(t *testing.T) {
 func TestNormalizeProfileSocialListCombinesThreeEntries(t *testing.T) {
 	got, ok := normalizeProfileSocialList([3]string{
 		"https://github.com/BakedSoups",
-		"https://x.com/pixaross",
-		"instagram: pixaross",
+		"https://x.com/community_nongrams",
+		"instagram: community_nongrams",
 	})
 	if !ok {
 		t.Fatal("social list was rejected")
 	}
-	want := "github: bakedsoups | x: pixaross | instagram: pixaross"
+	want := "github: bakedsoups | x: community_nongrams | instagram: community_nongrams"
 	if got != want {
 		t.Fatalf("social list = %q, want %q", got, want)
 	}
@@ -136,16 +168,27 @@ func TestMarkCommunityItemUnpublishedClearsLocalArtStatus(t *testing.T) {
 				ID:         "art1",
 				Status:     community.LevelPublishedStatus,
 				Visibility: community.VisibilityPublic,
+				Puzzle:     validPuzzle("art1", 8),
 			}},
+			Packs: []community.Pack{{Items: []community.PackItem{{LevelID: "art1"}}}},
 		},
-		communityPublished: []community.GalleryItem{{Kind: "art", ID: "art1"}},
+		communityPublished: []community.GalleryItem{{Kind: "art", ID: "cloud-art1", LocalID: "art1"}},
 	}
-	game.markCommunityItemUnpublished("art", "art1")
+	game.markCommunityItemUnpublished("art", "cloud-art1")
 	if game.communityLibrary.Drafts[0].Status != community.LevelDraftStatus {
 		t.Fatalf("status = %q, want draft", game.communityLibrary.Drafts[0].Status)
 	}
 	if game.communityLibrary.Drafts[0].Visibility != community.VisibilityDraft {
 		t.Fatalf("visibility = %q, want draft", game.communityLibrary.Drafts[0].Visibility)
+	}
+	if game.communityLibrary.Drafts[0].ID == "art1" {
+		t.Fatal("draft id was not rotated after unpublish")
+	}
+	if game.communityLibrary.Drafts[0].Puzzle.ID != game.communityLibrary.Drafts[0].ID {
+		t.Fatalf("puzzle id = %q, want %q", game.communityLibrary.Drafts[0].Puzzle.ID, game.communityLibrary.Drafts[0].ID)
+	}
+	if got := game.communityLibrary.Packs[0].Items[0].LevelID; got != game.communityLibrary.Drafts[0].ID {
+		t.Fatalf("pack item level id = %q, want %q", got, game.communityLibrary.Drafts[0].ID)
 	}
 	if len(game.communityPublished) != 0 {
 		t.Fatalf("published items = %d, want 0", len(game.communityPublished))

@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/alex/nongrampictures/internal/game"
+	"github.com/BakedSoups/community_nongrams/internal/game"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -13,7 +13,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ebiten.SetWindowTitle("Nonogram Pictures")
+	ebiten.SetWindowTitle("Community Nongrams")
 	ebiten.SetWindowSize(game.ScreenWidth, game.ScreenHeight)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	if err := ebiten.RunGame(g); err != nil {

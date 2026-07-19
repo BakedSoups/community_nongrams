@@ -45,10 +45,7 @@ func (g *Game) drawEditor(screen *ebiten.Image) {
 	}
 
 	if time.Now().Before(g.menuNoticeUntil) {
-		notice := rect{x: 164, y: 70, w: 212, h: 34}
-		drawRounded(screen, notice, 6, colWhite)
-		drawRectOutline(screen, notice, 2, colAccent)
-		drawCenteredText(screen, g.menuNotice, notice, colAccent)
+		drawNoticePopup(screen, g.menuNotice, 70)
 	}
 }
 

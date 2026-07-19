@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const saveKeyPrefix = "pixaross.best."
+const saveKeyPrefix = "community_nongrams.best."
 
 func loadSavedBest(levelID string) time.Duration {
 	storage := js.Global().Get("localStorage")

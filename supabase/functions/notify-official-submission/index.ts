@@ -17,9 +17,9 @@ serve(async (request) => {
     method: "POST",
     headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: Deno.env.get("REVIEW_FROM_EMAIL") || "Pixaross <submissions@example.com>",
+      from: Deno.env.get("REVIEW_FROM_EMAIL") || "Community Nongrams <submissions@example.com>",
       to: [reviewEmail],
-      subject: "New Pixaross main-game submission",
+      subject: "New Community Nongrams main-game submission",
       html: `<p>A creator submitted a level for inspection.</p><p><a href="${adminURL}?submission=${encodeURIComponent(submission.id)}">Review submission</a></p>`
     })
   });

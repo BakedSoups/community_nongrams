@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alex/nongrampictures/internal/assets"
-	"github.com/alex/nongrampictures/internal/community"
-	"github.com/alex/nongrampictures/internal/nonogram"
+	"github.com/BakedSoups/community_nongrams/internal/assets"
+	"github.com/BakedSoups/community_nongrams/internal/community"
+	"github.com/BakedSoups/community_nongrams/internal/nonogram"
 )
 
 type communityView uint8
@@ -28,9 +28,12 @@ const (
 	communityPublished
 	communityPublishSetup
 	communityImportPreview
+	communityImportSetup
 	communityNewArtSetup
 	communityPackSetup
 	communityChat
+	communityPublishedEdit
+	communityPublishedPackAdd
 )
 
 func loadCommunityLibrary() community.Library {
@@ -106,6 +109,7 @@ func (g *Game) closeProfileEditor(save bool) {
 		if raw, err := json.Marshal(g.profileArt.puzzle()); err == nil {
 			syncCommunityProfile(string(raw), g.profileBio, g.profileName, g.profileSocial, g.profilePalette, g.profileColor)
 		}
+		g.showCommunityNotice("profile saved")
 	}
 	g.editor = g.profileReturn
 	g.currentDraftID = g.profileDraftID
@@ -289,6 +293,10 @@ func (g *Game) queueCommunityDraftPublish(index int) {
 		return
 	}
 	draft := g.communityLibrary.Drafts[index]
+	if draft.Status == community.LevelPublishedStatus {
+		g.showPublishedManagementNotice("art")
+		return
+	}
 	if err := draft.ValidateForPublish(); err != nil {
 		g.showCommunityNotice(err.Error())
 		return
@@ -307,6 +315,140 @@ func (g *Game) queueCommunityDraftPublish(index int) {
 	g.publishPreviewRaw = communityQuestionCover()
 	g.publishField = 0
 	g.communityView = communityPublishSetup
+}
+
+func (g *Game) showPublishedManagementNotice(kind string) {
+	g.showCommunityNotice("to change or unpublish this " + kind + ", use the Published tab")
+}
+
+func (g *Game) openPublishedEditor(slot int) {
+	if slot < 0 || slot >= len(g.communityPublished) {
+		return
+	}
+	item := g.communityPublished[slot]
+	g.publishedEditIndex = slot
+	g.publishedEditKind = item.Kind
+	g.publishedEditID = item.ID
+	g.publishedEditTitle = item.Title
+	g.publishedEditDescription = item.Description
+	g.publishedEditField = 0
+	g.publishedEditLevels = append([]community.LevelVersion(nil), item.Levels...)
+	g.communityView = communityPublishedEdit
+}
+
+func (g *Game) openPublishedPackAdd() {
+	if g.publishedEditKind != "pack" {
+		return
+	}
+	if len(g.publishedEditLevels) >= 32 {
+		g.showCommunityNotice("packs can have up to 32 levels")
+		return
+	}
+	g.communityPage = 0
+	g.communityView = communityPublishedPackAdd
+}
+
+func (g *Game) applyPublishedEdit() {
+	title := strings.TrimSpace(g.publishedEditTitle)
+	if title == "" {
+		g.showCommunityNotice("name is required")
+		return
+	}
+	description := strings.TrimSpace(g.publishedEditDescription)
+	levelsRaw := ""
+	if g.publishedEditKind == "pack" {
+		if len(g.publishedEditLevels) == 0 {
+			g.showCommunityNotice("pack needs at least one level")
+			return
+		}
+		raw, err := json.Marshal(g.publishedEditLevelsPayload())
+		if err != nil {
+			g.showCommunityNotice("could not update pack contents")
+			return
+		}
+		levelsRaw = string(raw)
+	}
+	if !updateCommunityPublishedItem(g.publishedEditKind, g.publishedEditID, title, description, levelsRaw) {
+		g.showCommunityNotice("published edits are available in the web build")
+		return
+	}
+	if g.publishedEditIndex >= 0 && g.publishedEditIndex < len(g.communityPublished) {
+		g.communityPublished[g.publishedEditIndex].Title = title
+		g.communityPublished[g.publishedEditIndex].Description = description
+		if g.publishedEditKind == "pack" {
+			g.communityPublished[g.publishedEditIndex].Levels = append([]community.LevelVersion(nil), g.publishedEditLevels...)
+		}
+	}
+	g.showCommunityNotice("applying published changes")
+}
+
+func (g *Game) publishedEditLevelsPayload() []community.LevelDraft {
+	levels := make([]community.LevelDraft, 0, len(g.publishedEditLevels))
+	for _, level := range g.publishedEditLevels {
+		if level.Puzzle == nil {
+			continue
+		}
+		localID := strings.TrimSpace(level.LocalID)
+		if localID == "" {
+			localID = strings.TrimSpace(level.LevelID)
+		}
+		levels = append(levels, community.LevelDraft{
+			ID:          localID,
+			Title:       level.Title,
+			Description: level.Description,
+			Tags:        append([]string(nil), level.Tags...),
+			Puzzle:      level.Puzzle,
+		})
+	}
+	return levels
+}
+
+func (g *Game) removePublishedEditPackLevel(index int) {
+	if index < 0 || index >= len(g.publishedEditLevels) {
+		return
+	}
+	if len(g.publishedEditLevels) == 1 {
+		g.showCommunityNotice("pack needs at least one level")
+		return
+	}
+	g.publishedEditLevels = append(g.publishedEditLevels[:index], g.publishedEditLevels[index+1:]...)
+}
+
+func (g *Game) addPublishedEditPackLevel() {
+	if len(g.publishedEditLevels) >= 32 {
+		g.showCommunityNotice("packs can have up to 32 levels")
+		return
+	}
+	g.openPublishedPackAdd()
+}
+
+func (g *Game) addPublishedEditPackDraft(index int) {
+	if index < 0 || index >= len(g.communityLibrary.Drafts) {
+		return
+	}
+	if len(g.publishedEditLevels) >= 32 {
+		g.showCommunityNotice("packs can have up to 32 levels")
+		return
+	}
+	used := make(map[string]bool, len(g.publishedEditLevels))
+	for _, level := range g.publishedEditLevels {
+		used[level.LocalID] = true
+		used[level.LevelID] = true
+	}
+	draft := g.communityLibrary.Drafts[index]
+	if draft.Puzzle == nil || used[draft.ID] {
+		g.showCommunityNotice("that art is already in this pack")
+		return
+	}
+	g.publishedEditLevels = append(g.publishedEditLevels, community.LevelVersion{
+		LevelID:     draft.ID,
+		LocalID:     draft.ID,
+		Title:       draft.Title,
+		Description: draft.Description,
+		Tags:        append([]string(nil), draft.Tags...),
+		Puzzle:      draft.Puzzle,
+	})
+	g.communityView = communityPublishedEdit
 }
 
 func (g *Game) submitCommunityDraftPublish() {
@@ -431,13 +573,33 @@ func (g *Game) markCommunityItemUnpublished(kind, id string) {
 	changed := false
 	switch kind {
 	case "art":
+		localID := id
+		for _, item := range g.communityPublished {
+			if item.Kind == kind && item.ID == id && item.LocalID != "" {
+				localID = item.LocalID
+				break
+			}
+		}
 		for i := range g.communityLibrary.Drafts {
-			if g.communityLibrary.Drafts[i].ID != id {
+			if g.communityLibrary.Drafts[i].ID != localID {
 				continue
+			}
+			oldID := g.communityLibrary.Drafts[i].ID
+			newID := newLocalID("level")
+			g.communityLibrary.Drafts[i].ID = newID
+			if g.communityLibrary.Drafts[i].Puzzle != nil {
+				g.communityLibrary.Drafts[i].Puzzle.ID = newID
 			}
 			g.communityLibrary.Drafts[i].Status = community.LevelDraftStatus
 			g.communityLibrary.Drafts[i].Visibility = community.VisibilityDraft
 			g.communityLibrary.Drafts[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+			for packIndex := range g.communityLibrary.Packs {
+				for itemIndex := range g.communityLibrary.Packs[packIndex].Items {
+					if g.communityLibrary.Packs[packIndex].Items[itemIndex].LevelID == oldID {
+						g.communityLibrary.Packs[packIndex].Items[itemIndex].LevelID = newID
+					}
+				}
+			}
 			changed = true
 			break
 		}
@@ -575,14 +737,79 @@ func (g *Game) loadCommunityPublished(raw string) error {
 	return nil
 }
 
+func (g *Game) loadCommunityCompleted(raw string) error {
+	var items []community.GalleryItem
+	if err := json.Unmarshal([]byte(raw), &items); err != nil {
+		return err
+	}
+	for i := range items {
+		items[i].Completed = true
+		if items[i].Puzzle != nil {
+			if err := items[i].Puzzle.ParseSolution(); err != nil {
+				return err
+			}
+		}
+	}
+	g.communityCompleted = items
+	for _, item := range items {
+		g.markCommunityLevelCompleted(item.ID)
+	}
+	return nil
+}
+
+func (g *Game) communityLevelCompleted(levelID string, cloudCompleted bool) bool {
+	return cloudCompleted || (levelID != "" && g.bestTimes[levelID] > 0)
+}
+
+func (g *Game) markCommunityLevelCompleted(levelID string) {
+	if levelID == "" {
+		return
+	}
+	for i := range g.communityGallery {
+		if g.communityGallery[i].ID == levelID {
+			g.communityGallery[i].Completed = true
+		}
+		for j := range g.communityGallery[i].Levels {
+			if g.communityGallery[i].Levels[j].LevelID == levelID {
+				g.communityGallery[i].Levels[j].Completed = true
+			}
+		}
+	}
+	for i := range g.communityCreators {
+		for j := range g.communityCreators[i].Levels {
+			if g.communityCreators[i].Levels[j].LevelID == levelID {
+				g.communityCreators[i].Levels[j].Completed = true
+			}
+		}
+		for j := range g.communityCreators[i].Featured {
+			if g.communityCreators[i].Featured[j].ID == levelID {
+				g.communityCreators[i].Featured[j].Completed = true
+			}
+			for k := range g.communityCreators[i].Featured[j].Levels {
+				if g.communityCreators[i].Featured[j].Levels[k].LevelID == levelID {
+					g.communityCreators[i].Featured[j].Levels[k].Completed = true
+				}
+			}
+		}
+	}
+	for i := range g.communityCompleted {
+		if g.communityCompleted[i].ID == levelID {
+			g.communityCompleted[i].Completed = true
+		}
+	}
+}
+
 func (g *Game) playGalleryLevel(index int) {
 	if index < 0 || index >= len(g.communityGallery) || g.communityGallery[index].Puzzle == nil {
 		return
 	}
-	recordCommunityPlay(g.communityGallery[index].ID)
+	item := g.communityGallery[index]
+	recordCommunityPlay(item.ID, false)
+	puzzle := *item.Puzzle
+	puzzle.ID = item.ID
 	g.activeCommunityPack = ""
 	g.communityPlayReturn = communityBrowse
-	g.loadCommunityPuzzle(g.communityGallery[index].Puzzle)
+	g.loadCommunityPuzzle(&puzzle)
 }
 
 func (g *Game) playGalleryPackLevel(index int) {
@@ -593,10 +820,12 @@ func (g *Game) playGalleryPackLevel(index int) {
 	if index < 0 || index >= len(levels) || levels[index].Puzzle == nil {
 		return
 	}
-	recordCommunityPlay(levels[index].LevelID)
+	recordCommunityPlay(levels[index].LevelID, false)
+	puzzle := *levels[index].Puzzle
+	puzzle.ID = levels[index].LevelID
 	g.activeCommunityPack = ""
 	g.communityPlayReturn = communityGalleryPack
-	g.loadCommunityPuzzle(levels[index].Puzzle)
+	g.loadCommunityPuzzle(&puzzle)
 }
 
 func (g *Game) loadCommunityCreators(raw string) error {
@@ -634,6 +863,20 @@ func (g *Game) loadCommunityCreators(raw string) error {
 	return nil
 }
 
+func (g *Game) filteredCommunityCreatorIndexes() []int {
+	query := strings.ToLower(strings.TrimSpace(g.creatorSearch))
+	indexes := make([]int, 0, len(g.communityCreators))
+	for i, creator := range g.communityCreators {
+		if query == "" ||
+			strings.Contains(strings.ToLower(creator.DisplayName), query) ||
+			strings.Contains(strings.ToLower(creator.Bio), query) ||
+			strings.Contains(strings.ToLower(creator.Social), query) {
+			indexes = append(indexes, i)
+		}
+	}
+	return indexes
+}
+
 func (g *Game) playCreatorLevel(index int) {
 	if g.selectedCreator < 0 || g.selectedCreator >= len(g.communityCreators) {
 		return
@@ -642,9 +885,12 @@ func (g *Game) playCreatorLevel(index int) {
 	if index < 0 || index >= len(levels) || levels[index].Puzzle == nil {
 		return
 	}
+	recordCommunityPlay(levels[index].LevelID, false)
+	puzzle := *levels[index].Puzzle
+	puzzle.ID = levels[index].LevelID
 	g.activeCommunityPack = ""
 	g.communityPlayReturn = communityCreatorProfile
-	g.loadCommunityPuzzle(levels[index].Puzzle)
+	g.loadCommunityPuzzle(&puzzle)
 }
 
 func (g *Game) playCommunityVersion(index int) {
@@ -723,8 +969,8 @@ func (g *Game) togglePackDraft(index int) {
 		return
 	}
 	id := g.communityLibrary.Drafts[index].ID
-	if !g.packSelection[id] && len(g.packSelection) >= 20 {
-		g.showCommunityNotice("packs can contain up to 20 levels")
+	if !g.packSelection[id] && len(g.packSelection) >= 32 {
+		g.showCommunityNotice("packs can contain up to 32 levels")
 		return
 	}
 	if g.packSelection[id] {
@@ -739,6 +985,10 @@ func (g *Game) queueLocalPackPublish(index int) {
 		return
 	}
 	pack := g.communityLibrary.Packs[index]
+	if pack.Status == community.LevelPublishedStatus {
+		g.showPublishedManagementNotice("pack")
+		return
+	}
 	g.packSetupID = pack.ID
 	g.packSetupTitle = pack.Title
 	g.packSetupDescription = pack.Description
@@ -794,13 +1044,6 @@ func (g *Game) savePackSetup(publish bool) {
 		g.showCommunityNotice("sign in to publish")
 		return
 	}
-	for _, item := range pack.Items {
-		draft, ok := g.communityLibrary.Draft(item.LevelID)
-		if !ok || draft.Status != community.LevelPublishedStatus {
-			g.showCommunityNotice("publish each art first")
-			return
-		}
-	}
 	g.pendingPackPublishID = pack.ID
 	g.pendingPackPublishAt = time.Now().Add(100 * time.Millisecond)
 	g.packPublishAwaitingID = pack.ID
@@ -818,9 +1061,16 @@ func (g *Game) publishLocalPack(id string) {
 	if pack == nil {
 		return
 	}
+	levels := make([]community.LevelDraft, 0, len(pack.Items))
+	for _, item := range pack.Items {
+		if draft, ok := g.communityLibrary.Draft(item.LevelID); ok {
+			levels = append(levels, *draft)
+		}
+	}
 	raw, err := json.Marshal(struct {
-		Pack *community.Pack `json:"pack"`
-	}{Pack: pack})
+		Pack   *community.Pack        `json:"pack"`
+		Levels []community.LevelDraft `json:"levels"`
+	}{Pack: pack, Levels: levels})
 	preview := ""
 	if len(g.packSetupPreviewRaw) > 0 {
 		if encoded, encodeErr := json.Marshal(g.packSetupPreviewRaw); encodeErr == nil {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alex/nongrampictures/internal/nonogram"
+	"github.com/BakedSoups/community_nongrams/internal/nonogram"
 )
 
 type Visibility string
@@ -72,8 +72,10 @@ type CreatorProfile struct {
 type GalleryItem struct {
 	Kind         string           `json:"kind"`
 	ID           string           `json:"id"`
+	LocalID      string           `json:"localId,omitempty"`
 	OwnerID      string           `json:"ownerId"`
 	CreatorName  string           `json:"creatorName"`
+	CreatorBio   string           `json:"creatorBio,omitempty"`
 	AvatarPuzzle *nonogram.Puzzle `json:"avatarPuzzle,omitempty"`
 	Title        string           `json:"title"`
 	Description  string           `json:"description,omitempty"`
@@ -82,6 +84,7 @@ type GalleryItem struct {
 	Liked        bool             `json:"liked"`
 	Owned        bool             `json:"owned"`
 	Promoted     bool             `json:"promoted"`
+	Completed    bool             `json:"completed,omitempty"`
 	PreviewRaw   [][]string       `json:"previewPixels,omitempty"`
 	Puzzle       *nonogram.Puzzle `json:"puzzle,omitempty"`
 	Levels       []LevelVersion   `json:"levels,omitempty"`
@@ -100,11 +103,13 @@ type ChatMessage struct {
 type LevelVersion struct {
 	ID          string           `json:"id"`
 	LevelID     string           `json:"levelId"`
+	LocalID     string           `json:"localId,omitempty"`
 	Version     int              `json:"version"`
 	Title       string           `json:"title"`
 	Description string           `json:"description,omitempty"`
 	Tags        []string         `json:"tags,omitempty"`
 	Puzzle      *nonogram.Puzzle `json:"puzzle"`
+	Completed   bool             `json:"completed,omitempty"`
 	PublishedAt string           `json:"publishedAt"`
 }
 
@@ -165,6 +170,15 @@ func (l *Library) Draft(id string) (*LevelDraft, bool) {
 	for i := range l.Drafts {
 		if l.Drafts[i].ID == id {
 			return &l.Drafts[i], true
+		}
+	}
+	return nil, false
+}
+
+func (l *Library) Pack(id string) (*Pack, bool) {
+	for i := range l.Packs {
+		if l.Packs[i].ID == id {
+			return &l.Packs[i], true
 		}
 	}
 	return nil, false
@@ -270,7 +284,7 @@ func (p Pack) Validate() error {
 
 func supportedSize(size int) bool {
 	switch size {
-	case 8, 10, 15, 20:
+	case 8, 10, 15, 20, 32:
 		return true
 	default:
 		return false

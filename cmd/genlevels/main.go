@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alex/nongrampictures/internal/pixelpuzzle"
+	"github.com/BakedSoups/community_nongrams/internal/pixelpuzzle"
 	_ "golang.org/x/image/webp"
 )
 

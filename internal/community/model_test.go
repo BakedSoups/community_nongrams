@@ -3,7 +3,7 @@ package community
 import (
 	"testing"
 
-	"github.com/alex/nongrampictures/internal/nonogram"
+	"github.com/BakedSoups/community_nongrams/internal/nonogram"
 )
 
 func TestDraftPublishValidation(t *testing.T) {

@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+.git
+.agents
+.codex
+dist
+build

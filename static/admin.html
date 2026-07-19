@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pixaross Review</title>
+  <title>Community Nongrams Review</title>
   <style>
     body { margin: 0; background: #e9e3d7; color: #363431; font: 15px system-ui, sans-serif; }
     header, main { max-width: 920px; margin: auto; padding: 24px; }
@@ -24,7 +24,7 @@
   <main><p id="message">Loading submissions...</p><section id="list"></section></main>
   <script src="config.js"></script>
   <script>
-    const session = JSON.parse(localStorage.getItem("pixaross.community.session") || "null");
+    const session = JSON.parse(localStorage.getItem("community_nongrams.community.session") || "null");
     const message = document.getElementById("message");
     const list = document.getElementById("list");
     const headers = () => ({

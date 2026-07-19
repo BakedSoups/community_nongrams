@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alex/nongrampictures/internal/assets"
-	"github.com/alex/nongrampictures/internal/nonogram"
+	"github.com/BakedSoups/community_nongrams/internal/assets"
+	"github.com/BakedSoups/community_nongrams/internal/nonogram"
 )
 
 type editorMode uint8

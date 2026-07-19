@@ -17,6 +17,7 @@ type Puzzle struct {
 	RevealArt   string     `json:"revealArt,omitempty"`
 	SkeletonRaw [][]string `json:"skeletonPixels,omitempty"`
 	RevealRaw   [][]string `json:"revealPixels,omitempty"`
+	BeforeRaw   [][]string `json:"beforePixels,omitempty"`
 
 	Solution [][]bool `json:"-"`
 }

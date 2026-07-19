@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alex/nongrampictures/internal/assets"
-	"github.com/alex/nongrampictures/internal/nonogram"
+	"github.com/BakedSoups/community_nongrams/internal/assets"
+	"github.com/BakedSoups/community_nongrams/internal/nonogram"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/text"
@@ -351,6 +351,8 @@ func (g *Game) drawReveal(screen *ebiten.Image) {
 	backLabel := "offline levels"
 	if g.editorPreview {
 		backLabel = "back to editor"
+	} else if g.communityPreview {
+		backLabel = "back"
 	}
 	drawButton(screen, g.layout.revealLevelsButton, backLabel)
 }
@@ -412,6 +414,34 @@ func drawButton(screen *ebiten.Image, r rect, label string) {
 	drawRounded(screen, r, 8, colPanelDark)
 	drawRounded(screen, inset(r, 4), 6, color.RGBA{237, 228, 208, 255})
 	drawCenteredText(screen, label, r, colInk)
+}
+
+func drawNoticePopup(screen *ebiten.Image, message string, y float64) {
+	if message == "" {
+		return
+	}
+	const maxChars = 52
+	lines := wrapTextLines(message, maxChars, 3)
+	width := 220.0
+	for _, line := range lines {
+		lineWidth := float64(text.BoundString(face, line).Dx() + 48)
+		if lineWidth > width {
+			width = lineWidth
+		}
+	}
+	if width > 500 {
+		width = 500
+	}
+	height := float64(30 + len(lines)*18)
+	r := rect{x: (ScreenWidth - width) / 2, y: y - height + 38, w: width, h: height}
+	drawRounded(screen, rect{x: r.x + 4, y: r.y + 5, w: r.w, h: r.h}, 8, color.RGBA{80, 72, 62, 110})
+	drawRounded(screen, r, 8, colWhite)
+	drawRectOutline(screen, r, 2, colAccent)
+	textY := int(r.y) + 24
+	for _, line := range lines {
+		drawCenteredText(screen, line, rect{x: r.x + 16, y: float64(textY - 16), w: r.w - 32, h: 18}, colAccent)
+		textY += 18
+	}
 }
 
 func levelTileRect(index int) rect {
@@ -539,12 +569,12 @@ func drawEraserIcon(dst *ebiten.Image, r rect, active bool) {
 
 func (g *Game) drawMainMenu(screen *ebiten.Image) {
 	drawMenuBackdrop(screen)
-	drawScaledTextCentered(screen, "PIXAROSS", rect{x: 76, y: 46, w: 388, h: 52}, 2.25, colInk)
+	drawScaledTextCentered(screen, "COMMUNITY NONGRAMS", rect{x: 76, y: 46, w: 388, h: 52}, 2.25, colInk)
 	drawButton(screen, mainLevelButton(), "Offline Levels")
 	drawGlobalCommunityButton(screen)
 	drawButton(screen, mainSettingsButton(), "Settings")
 	if time.Now().Before(g.menuNoticeUntil) {
-		drawCenteredText(screen, g.menuNotice, rect{x: 0, y: 542, w: ScreenWidth, h: 36}, colAccent)
+		drawNoticePopup(screen, g.menuNotice, 542)
 	}
 }
 
@@ -622,7 +652,7 @@ func (g *Game) drawLevelSelect(screen *ebiten.Image) {
 		g.drawLevelTile(screen, levelTileRect(slot), pageStart+slot)
 	}
 	if time.Now().Before(g.menuNoticeUntil) {
-		drawCenteredText(screen, g.menuNotice, rect{x: 0, y: 648, w: ScreenWidth, h: 34}, colAccent)
+		drawNoticePopup(screen, g.menuNotice, 636)
 	}
 	drawCenteredText(screen, fmt.Sprintf("%d/%d", g.levelPage+1, levelSelectPages()), rect{x: 0, y: 650, w: ScreenWidth, h: 26}, colMuted)
 	drawButton(screen, g.layout.levelPrevButton, "prev")
