@@ -328,18 +328,19 @@ func (g *Game) drawCommunityCreatorProfile(screen *ebiten.Image) {
 		drawText(screen, truncateText(creator.Social, 34), 154, 292, colAccent)
 	}
 	if creator.Bio != "" {
-		bioY := 292
+		nextY := 292
 		if creator.Social != "" {
-			bioY = 318
+			nextY = 318
 		}
-		drawWrappedText(screen, creator.Bio, 154, bioY, 44, 4, colMuted)
+		drawWrappedText(screen, creator.Bio, 154, nextY, 34, 3, colMuted)
 	}
-	contentY := float64(336)
+	contentY := communityCreatorProfileBaseContentY(creator.Social, creator.Bio)
 	if len(creator.Featured) > 0 {
 		featured := creator.Featured[0]
-		drawPixelFavoriteStar(screen, 48, 304)
-		drawText(screen, "FAVORITE PICROSS", 72, 310, colAccent)
-		r := communityCreatorFeaturedButton()
+		headerY := int(contentY)
+		drawPixelFavoriteStar(screen, 48, headerY)
+		drawText(screen, "FAVORITE PICROSS", 72, headerY+6, colAccent)
+		r := communityCreatorFeaturedButtonAt(float64(headerY + 30))
 		drawRounded(screen, r, 5, colWhite)
 		drawRectOutline(screen, r, 2, colAccent)
 		if featured.Puzzle != nil {
@@ -353,7 +354,7 @@ func (g *Game) drawCommunityCreatorProfile(screen *ebiten.Image) {
 			likeLabel = "LIKE"
 		}
 		drawText(screen, fmt.Sprintf("%s   %d %s", strings.ToUpper(featured.Kind), featured.Likes, likeLabel), int(r.x+76), int(r.y+48), colMuted)
-		contentY = 410
+		contentY = communityCreatorProfileLevelsY(creator.Social, creator.Bio, true)
 	}
 	start := g.communityPage * 4
 	for slot := 0; slot < 4 && start+slot < len(creator.Levels); slot++ {
@@ -944,9 +945,30 @@ func communityGalleryPackChatButton() rect { return rect{x: 360, y: 242, w: 92, 
 func communityChatMessageButton(slot int) rect {
 	return rect{x: 56, y: 272 + float64(slot)*50, w: 420, h: 48}
 }
-func communityChatInputField() rect        { return rect{x: 56, y: 564, w: 326, h: 42} }
-func communityChatSendButton() rect        { return rect{x: 392, y: 564, w: 92, h: 42} }
-func communityCreatorFeaturedButton() rect { return rect{x: 46, y: 334, w: 448, h: 70} }
+func communityChatInputField() rect { return rect{x: 56, y: 564, w: 326, h: 42} }
+func communityChatSendButton() rect { return rect{x: 392, y: 564, w: 92, h: 42} }
+func communityCreatorProfileBaseContentY(social, bio string) float64 {
+	nextY := 292
+	if social != "" {
+		nextY = 318
+	}
+	if bio != "" {
+		nextY += wrappedTextLineCount(bio, 34, 3)*20 + 18
+	}
+	if nextY+34 < 336 {
+		return 336
+	}
+	return float64(nextY + 34)
+}
+func communityCreatorProfileLevelsY(social, bio string, featured bool) float64 {
+	contentY := communityCreatorProfileBaseContentY(social, bio)
+	if !featured {
+		return contentY
+	}
+	r := communityCreatorFeaturedButtonAt(contentY + 30)
+	return r.y + r.h + 12
+}
+func communityCreatorFeaturedButtonAt(y float64) rect { return rect{x: 46, y: y, w: 448, h: 70} }
 func communityCreatorLevelButtonAt(slot int, y float64) rect {
 	column := slot % 2
 	row := slot / 2
@@ -1088,4 +1110,32 @@ func drawWrappedText(screen *ebiten.Image, text string, x, y, maxChars, maxLines
 	if line != "" && lines < maxLines {
 		drawText(screen, truncateText(line, maxChars), x, y+lines*20, c)
 	}
+}
+
+func wrappedTextLineCount(text string, maxChars, maxLines int) int {
+	words := strings.Fields(text)
+	if len(words) == 0 || maxChars <= 0 || maxLines <= 0 {
+		return 0
+	}
+	line := ""
+	lines := 0
+	for _, word := range words {
+		next := word
+		if line != "" {
+			next = line + " " + word
+		}
+		if len(next) <= maxChars {
+			line = next
+			continue
+		}
+		lines++
+		if lines >= maxLines {
+			return lines
+		}
+		line = word
+	}
+	if line != "" && lines < maxLines {
+		lines++
+	}
+	return lines
 }

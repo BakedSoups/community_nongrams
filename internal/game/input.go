@@ -768,11 +768,9 @@ func (g *Game) updateCommunityInput() {
 		}
 	case communityCreatorProfile:
 		if g.selectedCreator >= 0 && g.selectedCreator < len(g.communityCreators) {
-			levels := g.communityCreators[g.selectedCreator].Levels
-			contentY := float64(310)
-			if len(g.communityCreators[g.selectedCreator].Featured) > 0 {
-				contentY = 410
-			}
+			creator := g.communityCreators[g.selectedCreator]
+			levels := creator.Levels
+			contentY := communityCreatorProfileLevelsY(creator.Social, creator.Bio, len(creator.Featured) > 0)
 			start := g.communityPage * 4
 			for slot := 0; slot < 4 && start+slot < len(levels); slot++ {
 				if communityCreatorLevelButtonAt(slot, contentY).Contains(x, y) {
