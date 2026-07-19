@@ -87,6 +87,12 @@ func (g *Game) drawCommunityBrowse(screen *ebiten.Image) {
 		} else if len(item.Levels) > 0 && item.Levels[0].Puzzle != nil {
 			drawCommunityArtThumbnail(screen, item.Levels[0].Puzzle.RevealRaw, rect{x: r.x + 8, y: r.y + 8, w: 54, h: 54})
 		}
+		drawText(screen, truncateText(item.Title, 21), int(r.x+72), int(r.y+22), colInk)
+		description := strings.TrimSpace(item.Description)
+		if description == "" && item.Kind == "pack" {
+			description = fmt.Sprintf("%d levels", len(item.Levels))
+		}
+		drawText(screen, truncateText(description, 24), int(r.x+72), int(r.y+43), colMuted)
 		creator := item.CreatorName
 		if len(creator) > 15 {
 			creator = creator[:15]
@@ -96,7 +102,7 @@ func (g *Game) drawCommunityBrowse(screen *ebiten.Image) {
 			avatar = item.AvatarPuzzle.RevealRaw
 		}
 		avatarRect := rect{x: r.x + r.w - 42, y: r.y + 5, w: 32, h: 26}
-		drawText(screen, creator, int(avatarRect.x-8-float64(len(creator)*8)), int(r.y+22), colMuted)
+		drawText(screen, creator, int(avatarRect.x-8-float64(len(creator)*8)), int(r.y+64), colMuted)
 		drawCommunityArtThumbnail(screen, avatar, avatarRect)
 		drawButton(screen, communityGalleryOpenButton(slot), map[bool]string{true: "open", false: "play"}[item.Kind == "pack"])
 		drawButton(screen, communityGalleryLikeButton(slot), fmt.Sprintf("+ %d", item.Likes))
@@ -154,11 +160,12 @@ func (g *Game) drawCommunityPacks(screen *ebiten.Image) {
 		r := communityPackRect(i)
 		drawRounded(screen, r, 6, colWhite)
 		drawRectOutline(screen, r, 2, colGridHeavy)
-		title := pack.Title
-		if len(title) > 10 {
-			title = title[:10]
+		drawText(screen, truncateText(pack.Title, 18), int(r.x+10), int(r.y+18), colInk)
+		description := strings.TrimSpace(pack.Description)
+		if description == "" {
+			description = "No description"
 		}
-		drawText(screen, title, int(r.x+10), int(r.y+20), colInk)
+		drawText(screen, truncateText(description, 18), int(r.x+10), int(r.y+38), colMuted)
 		packStatus := fmt.Sprintf("%d art", len(pack.Items))
 		if string(pack.Status) == "published" {
 			packStatus = "published"
@@ -166,7 +173,7 @@ func (g *Game) drawCommunityPacks(screen *ebiten.Image) {
 		if g.pendingPackPublishID == pack.ID {
 			packStatus = "publishing"
 		}
-		drawText(screen, packStatus, int(r.x+10), int(r.y+44), colMuted)
+		drawText(screen, packStatus, int(r.x+10), int(r.y+58), colAccent)
 		for art, item := range pack.Items {
 			if art >= 20 {
 				break
@@ -953,4 +960,14 @@ func pixelExample(rows []string, colors []string) [][]string {
 		}
 	}
 	return pixels
+}
+
+func truncateText(s string, max int) string {
+	if max <= 0 || len(s) <= max {
+		return s
+	}
+	if max <= 3 {
+		return s[:max]
+	}
+	return s[:max-3] + "..."
 }

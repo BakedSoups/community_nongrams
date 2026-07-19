@@ -681,6 +681,13 @@ func (g *Game) savePackSetup(publish bool) {
 		g.showCommunityNotice("sign in to publish")
 		return
 	}
+	for _, item := range pack.Items {
+		draft, ok := g.communityLibrary.Draft(item.LevelID)
+		if !ok || draft.Status != community.LevelPublishedStatus {
+			g.showCommunityNotice("publish each art first")
+			return
+		}
+	}
 	g.pendingPackPublishID = pack.ID
 	g.pendingPackPublishAt = time.Now().Add(100 * time.Millisecond)
 	g.packPublishAwaitingID = pack.ID
@@ -698,16 +705,9 @@ func (g *Game) publishLocalPack(id string) {
 	if pack == nil {
 		return
 	}
-	drafts := make([]community.LevelDraft, 0, len(pack.Items))
-	for _, item := range pack.Items {
-		if draft, ok := g.communityLibrary.Draft(item.LevelID); ok {
-			drafts = append(drafts, *draft)
-		}
-	}
 	raw, err := json.Marshal(struct {
-		Pack   *community.Pack        `json:"pack"`
-		Drafts []community.LevelDraft `json:"drafts"`
-	}{Pack: pack, Drafts: drafts})
+		Pack *community.Pack `json:"pack"`
+	}{Pack: pack})
 	preview := ""
 	if len(g.packSetupPreviewRaw) > 0 {
 		if encoded, encodeErr := json.Marshal(g.packSetupPreviewRaw); encodeErr == nil {

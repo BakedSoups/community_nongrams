@@ -272,18 +272,6 @@
 	  try {
 	    const payload = JSON.parse(raw);
 	    const pack = payload.pack || payload;
-	    for (const draft of (payload.drafts || [])) {
-	      const levelResponse = await fetch(`${url}/rest/v1/rpc/publish_level`, {
-	        method: "POST", headers: communityHeaders(session.access_token),
-	        body: JSON.stringify({
-	          p_local_id: draft.id, p_title: draft.title || "Untitled",
-	          p_description: draft.description || "", p_tags: (draft.tags || []).slice(0, 8),
-	          p_puzzle: draft.puzzle, p_submit_official: false, p_rights_confirmed: false
-	        })
-	      });
-	      const levelBody = await levelResponse.json();
-	      if (!levelResponse.ok) throw new Error(levelBody.message || `Could not publish ${draft.title || "pack level"}`);
-	    }
 	    const response = await fetch(`${url}/rest/v1/rpc/publish_pack`, {
 	      method: "POST",
 	      headers: communityHeaders(session.access_token),

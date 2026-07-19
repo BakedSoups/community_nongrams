@@ -348,7 +348,7 @@ func (g *Game) drawReveal(screen *ebiten.Image) {
 	}
 
 	drawButton(screen, g.layout.retryButton, "retry puzzle")
-	backLabel := "levels"
+	backLabel := "offline levels"
 	if g.editorPreview {
 		backLabel = "back to editor"
 	}
@@ -540,7 +540,7 @@ func drawEraserIcon(dst *ebiten.Image, r rect, active bool) {
 func (g *Game) drawMainMenu(screen *ebiten.Image) {
 	drawMenuBackdrop(screen)
 	drawScaledTextCentered(screen, "PIXAROSS", rect{x: 76, y: 46, w: 388, h: 52}, 2.25, colInk)
-	drawButton(screen, mainLevelButton(), "Level Select")
+	drawButton(screen, mainLevelButton(), "Offline Levels")
 	drawGlobalCommunityButton(screen)
 	drawButton(screen, mainSettingsButton(), "Settings")
 	if time.Now().Before(g.menuNoticeUntil) {
@@ -616,7 +616,7 @@ func mainSettingsButton() rect {
 
 func (g *Game) drawLevelSelect(screen *ebiten.Image) {
 	drawMenuBackdrop(screen)
-	drawScaledTextCentered(screen, "LEVEL SELECT", rect{x: 56, y: 48, w: 428, h: 58}, 2.35, colInk)
+	drawScaledTextCentered(screen, "OFFLINE LEVELS", rect{x: 56, y: 48, w: 428, h: 58}, 2.1, colInk)
 	pageStart := g.levelPage * levelSelectPageSize
 	for slot := 0; slot < levelSelectPageSize; slot++ {
 		g.drawLevelTile(screen, levelTileRect(slot), pageStart+slot)
