@@ -40,10 +40,37 @@ func (g *Game) drawEditor(screen *ebiten.Image) {
 	if g.editorSizeOpen && !g.editingProfile {
 		g.drawEditorSizeMenu(screen)
 	}
+	if g.editorTitleEditing && !g.editingProfile {
+		g.drawEditorTitleDialog(screen)
+	}
 
 	if time.Now().Before(g.menuNoticeUntil) {
-		drawCenteredText(screen, g.menuNotice, rect{x: 120, y: 64, w: 300, h: 24}, colAccent)
+		notice := rect{x: 164, y: 70, w: 212, h: 34}
+		drawRounded(screen, notice, 6, colWhite)
+		drawRectOutline(screen, notice, 2, colAccent)
+		drawCenteredText(screen, g.menuNotice, notice, colAccent)
 	}
+}
+
+func (g *Game) drawEditorTitleDialog(screen *ebiten.Image) {
+	panel := rect{x: 72, y: 120, w: 396, h: 154}
+	drawRounded(screen, panel, 6, colWhite)
+	drawRectOutline(screen, panel, 3, colGridHeavy)
+	drawCenteredText(screen, "ART TITLE", rect{x: 110, y: 138, w: 320, h: 28}, colInk)
+	field := editorTitleDialogField()
+	drawRounded(screen, field, 4, colPanel)
+	drawRectOutline(screen, field, 2, colGridHeavy)
+	shown := g.editorTitleDraft
+	if len(shown) > 34 {
+		shown = shown[len(shown)-34:]
+	}
+	drawText(screen, shown, int(field.x+10), int(field.y+26), colInk)
+	if time.Now().UnixMilli()/500%2 == 0 {
+		cursorX := field.x + 10 + float64(len(shown))*8
+		vector.DrawFilledRect(screen, float32(cursorX), float32(field.y+11), 2, 20, colAccent, false)
+	}
+	drawButton(screen, editorTitleDialogCancelButton(), "cancel")
+	drawButton(screen, editorTitleDialogSaveButton(), "save")
 }
 
 func (g *Game) drawEditorGrid(screen *ebiten.Image) {
@@ -224,16 +251,19 @@ func editorCellAt(e editorState, px, py int) (int, int, bool) {
 	return x, y, e.inBounds(x, y)
 }
 
-func editorBackButton() rect   { return rect{x: 24, y: 24, w: 82, h: 38} }
-func editorUndoButton() rect   { return rect{x: 116, y: 24, w: 82, h: 38} }
-func editorSizeButton() rect   { return rect{x: 404, y: 24, w: 112, h: 38} }
-func editorTitleButton() rect  { return rect{x: 176, y: 68, w: 188, h: 26} }
-func editorPencilButton() rect { return rect{x: 108, y: 542, w: 64, h: 48} }
-func editorEraserButton() rect { return rect{x: 195, y: 542, w: 64, h: 48} }
-func editorFillButton() rect   { return rect{x: 282, y: 542, w: 64, h: 48} }
-func editorEyeButton() rect    { return rect{x: 369, y: 542, w: 64, h: 48} }
-func editorBeforeButton() rect { return rect{x: 130, y: 653, w: 118, h: 34} }
-func editorAfterButton() rect  { return rect{x: 258, y: 653, w: 118, h: 34} }
+func editorBackButton() rect              { return rect{x: 24, y: 24, w: 82, h: 38} }
+func editorUndoButton() rect              { return rect{x: 116, y: 24, w: 82, h: 38} }
+func editorSizeButton() rect              { return rect{x: 404, y: 24, w: 112, h: 38} }
+func editorTitleButton() rect             { return rect{x: 176, y: 68, w: 188, h: 26} }
+func editorTitleDialogField() rect        { return rect{x: 108, y: 174, w: 324, h: 40} }
+func editorTitleDialogCancelButton() rect { return rect{x: 122, y: 228, w: 118, h: 34} }
+func editorTitleDialogSaveButton() rect   { return rect{x: 300, y: 228, w: 118, h: 34} }
+func editorPencilButton() rect            { return rect{x: 108, y: 542, w: 64, h: 48} }
+func editorEraserButton() rect            { return rect{x: 195, y: 542, w: 64, h: 48} }
+func editorFillButton() rect              { return rect{x: 282, y: 542, w: 64, h: 48} }
+func editorEyeButton() rect               { return rect{x: 369, y: 542, w: 64, h: 48} }
+func editorBeforeButton() rect            { return rect{x: 130, y: 653, w: 118, h: 34} }
+func editorAfterButton() rect             { return rect{x: 258, y: 653, w: 118, h: 34} }
 func editorLayerPreviewButton() rect {
 	return rect{x: 382, y: 653, w: 36, h: 34}
 }

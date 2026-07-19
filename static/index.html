@@ -111,6 +111,7 @@
 	window.__pendingCommunityCloudDrafts = "";
 	window.__pendingCommunityCreators = "";
 	window.__pendingCommunityGallery = "";
+	window.__pendingCommunityChat = "";
 	window.__pendingCommunityPublished = "";
 	window.__pendingCommunityPublishedID = "";
 	window.__pendingCommunityPublishedPackID = "";
@@ -395,14 +396,15 @@
 	    setCommunityResult(error.message || "could not load creators");
 	  }
 	};
-	window.syncCommunityProfile = async (raw, bio, displayName) => {
+	window.syncCommunityProfile = async (raw, bio, displayName, social) => {
 	  const { url, key } = communityConfig();
 	  const session = await validCommunitySession().catch(() => null);
 	  if (!url || !key || !session?.access_token) return;
 	  try {
+	    const cleanedSocial = String(social || "").replace(/https?:\/\/|www\.|\/|\\/gi, "").slice(0, 80);
 	    const response = await fetch(`${url}/rest/v1/rpc/save_creator_profile`, {
 	      method: "POST", headers: communityHeaders(session.access_token),
-	      body: JSON.stringify({ p_avatar_puzzle: JSON.parse(raw), p_bio: String(bio || "").slice(0, 120), p_display_name: String(displayName || "Creator").slice(0, 40) })
+	      body: JSON.stringify({ p_avatar_puzzle: JSON.parse(raw), p_bio: String(bio || "").slice(0, 120), p_display_name: String(displayName || "Creator").slice(0, 40), p_social: cleanedSocial })
 	    });
 	    if (!response.ok) throw new Error((await response.json()).message || "Profile sync failed");
 	    window.requestCommunityCreators?.();
@@ -465,10 +467,61 @@
 	      return body || [];
 	    };
 	    let body = kind === "all" ? (await Promise.all([loadKind("art"), loadKind("pack")])).flat() : await loadKind(kind);
-	    body.sort((a,b) => sort === "top" ? (b.likes-a.likes || String(b.publishedAt).localeCompare(String(a.publishedAt))) : String(b.publishedAt).localeCompare(String(a.publishedAt)));
+	    body.sort((a,b) => sort === "top" ? ((b.likes || 0)-(a.likes || 0) || (b.plays || 0)-(a.plays || 0) || String(b.publishedAt).localeCompare(String(a.publishedAt))) : sort === "played" ? ((b.plays || 0)-(a.plays || 0) || String(b.publishedAt).localeCompare(String(a.publishedAt))) : String(b.publishedAt).localeCompare(String(a.publishedAt)));
 	    window.__pendingCommunityGallery = JSON.stringify(body);
 	  } catch (error) {
 	    setCommunityResult(error.message || "could not load gallery");
+	  }
+	};
+	window.recordCommunityPlay = async (levelId) => {
+	  const { url, key } = communityConfig();
+	  if (!url || !key || !levelId) return;
+	  try {
+	    const session = await validCommunitySession().catch(() => null);
+	    const response = await fetch(`${url}/rest/v1/rpc/record_level_play`, {
+	      method: "POST", headers: communityHeaders(session?.access_token),
+	      body: JSON.stringify({ p_level_id: levelId })
+	    });
+	    if (!response.ok) console.warn("play event skipped", await response.text());
+	  } catch (error) {
+	    console.warn("play event skipped", error);
+	  }
+	};
+	window.takeCommunityChat = () => {
+	  const value = window.__pendingCommunityChat || "";
+	  window.__pendingCommunityChat = "";
+	  return value;
+	};
+	window.requestCommunityChat = async (kind, id) => {
+	  const { url, key } = communityConfig();
+	  if (!url || !key || !kind || !id) return setCommunityResult("community cloud is not configured yet");
+	  try {
+	    const session = await validCommunitySession().catch(() => null);
+	    const response = await fetch(`${url}/rest/v1/rpc/browse_content_chat`, {
+	      method: "POST", headers: communityHeaders(session?.access_token),
+	      body: JSON.stringify({ p_kind: kind, p_content_id: id })
+	    });
+	    const body = await response.json();
+	    if (!response.ok) throw new Error(body.message || "Could not load chat");
+	    window.__pendingCommunityChat = JSON.stringify(body || []);
+	  } catch (error) {
+	    setCommunityResult(error.message || "could not load chat");
+	  }
+	};
+	window.postCommunityChat = async (kind, id, body) => {
+	  const { url } = communityConfig();
+	  const session = await validCommunitySession().catch((error) => { setCommunityResult(error.message); return null; });
+	  if (!session?.access_token) return setCommunityResult("sign in to chat");
+	  try {
+	    const response = await fetch(`${url}/rest/v1/rpc/post_content_chat`, {
+	      method: "POST", headers: communityHeaders(session.access_token),
+	      body: JSON.stringify({ p_kind: kind, p_content_id: id, p_body: String(body || "").slice(0, 220) })
+	    });
+	    const result = await response.json();
+	    if (!response.ok) throw new Error(result.message || "Could not send chat");
+	    window.requestCommunityChat(kind, id);
+	  } catch (error) {
+	    setCommunityResult(error.message || "could not send chat");
 	  }
 	};
 	window.toggleCommunityLike = async (kind, id) => {
@@ -703,6 +756,9 @@
 	  const title = window.__pendingEditorTitle || "";
 	  window.__pendingEditorTitle = "";
 	  return title;
+	};
+	window.clearEditorTitle = () => {
+	  window.__pendingEditorTitle = "";
 	};
 	window.requestEditorTitle = (current) => {
 	  const title = prompt("Drawing title:", current || "Untitled");

@@ -61,6 +61,7 @@ type CreatorProfile struct {
 	ID           string           `json:"id"`
 	DisplayName  string           `json:"displayName"`
 	Bio          string           `json:"bio,omitempty"`
+	Social       string           `json:"social,omitempty"`
 	AvatarPuzzle *nonogram.Puzzle `json:"avatarPuzzle,omitempty"`
 	Featured     []GalleryItem    `json:"featured,omitempty"`
 	Levels       []LevelVersion   `json:"levels"`
@@ -74,6 +75,7 @@ type GalleryItem struct {
 	AvatarPuzzle *nonogram.Puzzle `json:"avatarPuzzle,omitempty"`
 	Title        string           `json:"title"`
 	Description  string           `json:"description,omitempty"`
+	Plays        int              `json:"plays"`
 	Likes        int              `json:"likes"`
 	Liked        bool             `json:"liked"`
 	Owned        bool             `json:"owned"`
@@ -82,6 +84,14 @@ type GalleryItem struct {
 	Puzzle       *nonogram.Puzzle `json:"puzzle,omitempty"`
 	Levels       []LevelVersion   `json:"levels,omitempty"`
 	PublishedAt  string           `json:"publishedAt"`
+}
+
+type ChatMessage struct {
+	ID         string `json:"id"`
+	AuthorID   string `json:"authorId"`
+	AuthorName string `json:"authorName"`
+	Body       string `json:"body"`
+	CreatedAt  string `json:"createdAt"`
 }
 
 type LevelVersion struct {
@@ -215,9 +225,6 @@ func (d *LevelDraft) ValidateForPublish() error {
 	}
 	if filled == 0 {
 		return errors.New("after artwork is empty")
-	}
-	if filled == d.Puzzle.Width*d.Puzzle.Height {
-		return errors.New("fully filled puzzles cannot be published")
 	}
 	return nil
 }

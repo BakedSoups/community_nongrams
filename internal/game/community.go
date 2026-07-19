@@ -30,6 +30,7 @@ const (
 	communityImportPreview
 	communityNewArtSetup
 	communityPackSetup
+	communityChat
 )
 
 func loadCommunityLibrary() community.Library {
@@ -102,8 +103,9 @@ func (g *Game) closeProfileEditor(save bool) {
 		g.profileArt = g.editor.clone()
 		saveCommunityProfile(g.profileArt.packJSON())
 		saveCommunityBio(g.profileBio)
+		saveCommunitySocial(g.profileSocial)
 		if raw, err := json.Marshal(g.profileArt.puzzle()); err == nil {
-			syncCommunityProfile(string(raw), g.profileBio, g.profileName)
+			syncCommunityProfile(string(raw), g.profileBio, g.profileName, g.profileSocial)
 		}
 	}
 	g.editor = g.profileReturn
@@ -119,7 +121,7 @@ func (g *Game) syncCommunityProfileArt() {
 		return
 	}
 	if raw, err := json.Marshal(g.profileArt.puzzle()); err == nil {
-		syncCommunityProfile(string(raw), g.profileBio, g.profileName)
+		syncCommunityProfile(string(raw), g.profileBio, g.profileName, g.profileSocial)
 	}
 }
 
@@ -295,7 +297,7 @@ func (g *Game) queueCommunityDraftPublish(index int) {
 	g.publishTags = strings.Join(draft.Tags, ", ")
 	g.publishSubmitOfficial = false
 	g.publishRightsConfirmed = false
-	g.publishPreviewRaw = nil
+	g.publishPreviewRaw = communityQuestionCover()
 	g.publishField = 0
 	g.communityView = communityPublishSetup
 }
@@ -454,6 +456,45 @@ func (g *Game) loadCommunityGallery(raw string) error {
 	return nil
 }
 
+func (g *Game) loadCommunityChat(raw string) error {
+	var messages []community.ChatMessage
+	if err := json.Unmarshal([]byte(raw), &messages); err != nil {
+		return err
+	}
+	g.communityChatMessages = messages
+	return nil
+}
+
+func (g *Game) openCommunityChat(kind, id, title string, back communityView) {
+	g.chatKind = kind
+	g.chatID = id
+	g.chatTitle = title
+	g.chatDraft = ""
+	g.chatReturn = back
+	g.communityChatMessages = nil
+	g.communityView = communityChat
+	if !requestCommunityChat(kind, id) {
+		g.showCommunityNotice("chat is available in the web build")
+	}
+}
+
+func (g *Game) sendCommunityChat() {
+	body := strings.TrimSpace(g.chatDraft)
+	if body == "" {
+		return
+	}
+	if !communitySignedIn() {
+		g.communityView = communitySignIn
+		g.showCommunityNotice("sign in to chat")
+		return
+	}
+	if !postCommunityChat(g.chatKind, g.chatID, body) {
+		g.showCommunityNotice("chat is available in the web build")
+		return
+	}
+	g.chatDraft = ""
+}
+
 func (g *Game) loadCommunityPublished(raw string) error {
 	current := g.communityGallery
 	if err := g.loadCommunityGallery(raw); err != nil {
@@ -468,6 +509,7 @@ func (g *Game) playGalleryLevel(index int) {
 	if index < 0 || index >= len(g.communityGallery) || g.communityGallery[index].Puzzle == nil {
 		return
 	}
+	recordCommunityPlay(g.communityGallery[index].ID)
 	g.activeCommunityPack = ""
 	g.communityPlayReturn = communityBrowse
 	g.loadCommunityPuzzle(g.communityGallery[index].Puzzle)
@@ -481,6 +523,7 @@ func (g *Game) playGalleryPackLevel(index int) {
 	if index < 0 || index >= len(levels) || levels[index].Puzzle == nil {
 		return
 	}
+	recordCommunityPlay(levels[index].LevelID)
 	g.activeCommunityPack = ""
 	g.communityPlayReturn = communityGalleryPack
 	g.loadCommunityPuzzle(levels[index].Puzzle)
@@ -592,8 +635,8 @@ func (g *Game) openNewPackSetup() {
 	g.packSetupTitle = fmt.Sprintf("My Pack %d", len(g.communityLibrary.Packs)+1)
 	g.packSetupDescription = ""
 	g.packSetupItems = items
-	g.packSetupPreview = 0
-	g.packSetupPreviewRaw = nil
+	g.packSetupPreview = -1
+	g.packSetupPreviewRaw = communityQuestionCover()
 	g.packSetupField = 0
 	g.packSelection = nil
 	g.communityView = communityPackSetup
@@ -630,8 +673,8 @@ func (g *Game) queueLocalPackPublish(index int) {
 	g.packSetupTitle = pack.Title
 	g.packSetupDescription = pack.Description
 	g.packSetupItems = append([]community.PackItem(nil), pack.Items...)
-	g.packSetupPreview = 0
-	g.packSetupPreviewRaw = nil
+	g.packSetupPreview = -1
+	g.packSetupPreviewRaw = communityQuestionCover()
 	g.packSetupField = 0
 	g.communityView = communityPackSetup
 }

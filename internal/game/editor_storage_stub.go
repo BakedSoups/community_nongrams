@@ -10,6 +10,10 @@ func saveCommunityBio(string) bool { return false }
 
 func loadCommunityBio() string { return "" }
 
+func saveCommunitySocial(string) bool { return false }
+
+func loadCommunitySocial() string { return "" }
+
 func saveCommunityName(string) bool { return false }
 
 func loadCommunityName() string { return "" }
@@ -58,11 +62,19 @@ func requestCommunityCreators() bool { return false }
 
 func takeCommunityCreators() string { return "" }
 
-func syncCommunityProfile(string, string, string) {}
+func syncCommunityProfile(string, string, string, string) {}
 
 func requestCommunityGallery(string, string) bool { return false }
 
 func takeCommunityGallery() string { return "" }
+
+func requestCommunityChat(string, string) bool { return false }
+
+func takeCommunityChat() string { return "" }
+
+func postCommunityChat(string, string, string) bool { return false }
+
+func recordCommunityPlay(string) {}
 
 func requestCommunityPublished() bool { return false }
 
@@ -105,6 +117,8 @@ func takeEditorColorPicker() string {
 func requestEditorTitle(string) bool { return false }
 
 func takeEditorTitle() string { return "" }
+
+func clearEditorTitle() {}
 
 func requestCommunityCoverImport(int) bool { return false }
 

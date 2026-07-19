@@ -63,26 +63,31 @@ type Game struct {
 	menuNoticeUntil time.Time
 	levelPage       int
 
-	editor             editorState
-	editorUndo         []editorState
-	editorPointer      bool
-	editorLastX        int
-	editorLastY        int
-	editorSizeOpen     bool
-	editorPreview      bool
-	communityPreview   bool
-	editorOnionSkin    bool
-	currentDraftID     string
-	profileArt         editorState
-	profileReturn      editorState
-	profileDraftID     string
-	editingProfile     bool
-	profileBio         string
-	profileBioDraft    string
-	profileBioEditing  bool
-	profileName        string
-	profileNameDraft   string
-	profileNameEditing bool
+	editor               editorState
+	editorUndo           []editorState
+	editorPointer        bool
+	editorLastX          int
+	editorLastY          int
+	editorSizeOpen       bool
+	editorPreview        bool
+	communityPreview     bool
+	editorOnionSkin      bool
+	editorTitleEditing   bool
+	editorTitleDraft     string
+	currentDraftID       string
+	profileArt           editorState
+	profileReturn        editorState
+	profileDraftID       string
+	editingProfile       bool
+	profileBio           string
+	profileBioDraft      string
+	profileBioEditing    bool
+	profileSocial        string
+	profileSocialDraft   string
+	profileSocialEditing bool
+	profileName          string
+	profileNameDraft     string
+	profileNameEditing   bool
 
 	communityLibrary       community.Library
 	communityView          communityView
@@ -96,9 +101,15 @@ type Game struct {
 	communityPlayReturn    communityView
 	communityGallery       []community.GalleryItem
 	communityPublished     []community.GalleryItem
+	communityChatMessages  []community.ChatMessage
 	galleryKind            string
 	gallerySort            string
 	selectedGallery        int
+	chatKind               string
+	chatID                 string
+	chatTitle              string
+	chatDraft              string
+	chatReturn             communityView
 	pendingPublishID       string
 	pendingPublishAt       time.Time
 	publishAwaitingID      string
@@ -166,13 +177,14 @@ func New(puzzlePath string) (*Game, error) {
 		startTime:        time.Now(),
 		revealStart:      time.Now(),
 		audioEnabled:     true,
-		autoCorrect:      true,
+		autoCorrect:      false,
 		mode:             screenMainMenu,
 		bestTimes:        loadBestTimes(),
 		levelThumbs:      loadLevelThumbs(),
 		editor:           initialEditor(),
 		profileArt:       initialProfileArt(),
 		profileBio:       loadCommunityBio(),
+		profileSocial:    loadCommunitySocial(),
 		profileName:      loadCommunityName(),
 		communityLibrary: loadCommunityLibrary(),
 		selectedCreator:  -1,
@@ -366,6 +378,7 @@ func (g *Game) resetEditor(size int) {
 }
 
 func (g *Game) saveEditor() {
+	clearEditorTitle()
 	if g.saveCurrentDraft(false) == nil {
 		g.showMenuNotice("saved")
 		return
@@ -374,6 +387,7 @@ func (g *Game) saveEditor() {
 }
 
 func (g *Game) exportEditor() {
+	clearEditorTitle()
 	if exportEditorImage("pixaross-art.jpg", g.editor.imageExportJSON()) {
 		g.showMenuNotice("exported")
 		return

@@ -290,7 +290,7 @@ func (g *Game) drawStatusPanel(screen *ebiten.Image) {
 
 func (g *Game) drawToolTrigger(screen *ebiten.Image) {
 	drawTrigger(screen, g.layout.fillTrigger, g.tool == nonogram.ToolFill, colBlue, g.icons.Pencil)
-	drawTrigger(screen, g.layout.markTrigger, g.tool == nonogram.ToolMark, colAccent, g.icons.Eraser)
+	drawTrigger(screen, g.layout.markTrigger, g.tool == nonogram.ToolMark, colAccent, g.icons.X)
 	drawButton(screen, g.layout.godModeButton, "GOD")
 }
 
@@ -656,7 +656,6 @@ func (g *Game) drawSettings(screen *ebiten.Image) {
 	drawRectOutline(screen, g.layout.soundButton, 2, color.RGBA{98, 92, 84, 255})
 	drawButton(screen, g.layout.autoCorrectButton, autoCorrectLabel(g.autoCorrect))
 	drawRectOutline(screen, g.layout.autoCorrectButton, 2, color.RGBA{98, 92, 84, 255})
-	drawText(screen, "auto on: mistakes +10s", int(panel.x+76), int(panel.y+204), colMuted)
 	drawButton(screen, g.layout.settingsCloseButton, "back")
 	drawRectOutline(screen, g.layout.settingsCloseButton, 2, color.RGBA{98, 92, 84, 255})
 }
@@ -955,7 +954,7 @@ func toggleLabel(label string, enabled bool) string {
 
 func autoCorrectLabel(enabled bool) string {
 	if enabled {
-		return "auto: on"
+		return "assist: on"
 	}
-	return "auto: off"
+	return "assist: off"
 }

@@ -9,6 +9,7 @@ const (
 	communityLibraryKey = "pixaross.community.library"
 	communityProfileKey = "pixaross.community.profile"
 	communityBioKey     = "pixaross.community.bio"
+	communitySocialKey  = "pixaross.community.social"
 	communityNameKey    = "pixaross.community.name"
 )
 
@@ -36,6 +37,27 @@ func loadCommunityBio() string {
 		return ""
 	}
 	value := storage.Call("getItem", communityBioKey)
+	if value.IsUndefined() || value.IsNull() {
+		return ""
+	}
+	return value.String()
+}
+
+func saveCommunitySocial(social string) bool {
+	storage := js.Global().Get("localStorage")
+	if storage.IsUndefined() || storage.IsNull() {
+		return false
+	}
+	storage.Call("setItem", communitySocialKey, social)
+	return true
+}
+
+func loadCommunitySocial() string {
+	storage := js.Global().Get("localStorage")
+	if storage.IsUndefined() || storage.IsNull() {
+		return ""
+	}
+	value := storage.Call("getItem", communitySocialKey)
 	if value.IsUndefined() || value.IsNull() {
 		return ""
 	}
@@ -288,10 +310,10 @@ func takeCommunityCreators() string {
 	return value.String()
 }
 
-func syncCommunityProfile(raw, bio, name string) {
+func syncCommunityProfile(raw, bio, name, social string) {
 	fn := js.Global().Get("syncCommunityProfile")
 	if !fn.IsUndefined() && !fn.IsNull() {
-		fn.Invoke(raw, bio, name)
+		fn.Invoke(raw, bio, name, social)
 	}
 }
 
@@ -321,6 +343,43 @@ func takeCommunityGallery() string {
 		return ""
 	}
 	return value.String()
+}
+
+func requestCommunityChat(kind, id string) bool {
+	fn := js.Global().Get("requestCommunityChat")
+	if fn.IsUndefined() || fn.IsNull() {
+		return false
+	}
+	fn.Invoke(kind, id)
+	return true
+}
+
+func takeCommunityChat() string {
+	fn := js.Global().Get("takeCommunityChat")
+	if fn.IsUndefined() || fn.IsNull() {
+		return ""
+	}
+	value := fn.Invoke()
+	if value.IsUndefined() || value.IsNull() {
+		return ""
+	}
+	return value.String()
+}
+
+func postCommunityChat(kind, id, body string) bool {
+	fn := js.Global().Get("postCommunityChat")
+	if fn.IsUndefined() || fn.IsNull() {
+		return false
+	}
+	fn.Invoke(kind, id, body)
+	return true
+}
+
+func recordCommunityPlay(levelID string) {
+	fn := js.Global().Get("recordCommunityPlay")
+	if !fn.IsUndefined() && !fn.IsNull() {
+		fn.Invoke(levelID)
+	}
 }
 
 func requestCommunityPublished() bool {
@@ -462,6 +521,13 @@ func takeEditorTitle() string {
 		return ""
 	}
 	return value.String()
+}
+
+func clearEditorTitle() {
+	fn := js.Global().Get("clearEditorTitle")
+	if !fn.IsUndefined() && !fn.IsNull() {
+		fn.Invoke()
+	}
 }
 
 func requestCommunityCoverImport(size int) bool {

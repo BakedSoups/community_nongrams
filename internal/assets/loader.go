@@ -41,6 +41,8 @@ type UIIcons struct {
 	Fill       *ebiten.Image
 	Eyedropper *ebiten.Image
 	Eye        *ebiten.Image
+	Thumbsup   *ebiten.Image
+	X          *ebiten.Image
 }
 
 func LoadPuzzleAssets(puzzlePath string) (*PuzzleAssets, error) {
@@ -178,7 +180,15 @@ func LoadUIIcons() (*UIIcons, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &UIIcons{Home: home, Gear: gear, Pencil: pencil, Eraser: eraser, Fill: fill, Eyedropper: eyedropper, Eye: eye}, nil
+	thumbsup, err := loadImageWithFallback("assets/ui/thumbsup.png")
+	if err != nil {
+		return nil, err
+	}
+	xIcon, err := loadImageWithFallback("assets/ui/x.png")
+	if err != nil {
+		return nil, err
+	}
+	return &UIIcons{Home: home, Gear: gear, Pencil: pencil, Eraser: eraser, Fill: fill, Eyedropper: eyedropper, Eye: eye, Thumbsup: thumbsup, X: xIcon}, nil
 }
 
 func resolveAsset(base, path string) string {

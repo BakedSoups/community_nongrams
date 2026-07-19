@@ -202,6 +202,11 @@ func (g *Game) updateCommunityInput() {
 			g.showCommunityNotice("could not load gallery")
 		}
 	}
+	if raw := takeCommunityChat(); raw != "" {
+		if err := g.loadCommunityChat(raw); err != nil {
+			g.showCommunityNotice("could not load chat")
+		}
+	}
 	if raw := takeCommunityPublished(); raw != "" {
 		if err := g.loadCommunityPublished(raw); err != nil {
 			g.showCommunityNotice("could not load published work")
@@ -239,6 +244,7 @@ func (g *Game) updateCommunityInput() {
 				g.publishPreviewRaw = preview
 			} else if g.communityView == communityPackSetup {
 				g.packSetupPreviewRaw = preview
+				g.packSetupPreview = -1
 			}
 		}
 	}
@@ -274,6 +280,30 @@ func (g *Game) updateCommunityInput() {
 		}
 		if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && len(g.profileNameDraft) > 0 {
 			g.profileNameDraft = g.profileNameDraft[:len(g.profileNameDraft)-1]
+		}
+	}
+	if g.communityView == communitySignIn && communitySignedIn() && g.profileSocialEditing {
+		for _, char := range ebiten.AppendInputChars(nil) {
+			if char >= 32 && char <= 126 && len(g.profileSocialDraft) < 80 {
+				g.profileSocialDraft += string(char)
+			}
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && len(g.profileSocialDraft) > 0 {
+			g.profileSocialDraft = g.profileSocialDraft[:len(g.profileSocialDraft)-1]
+		}
+	}
+	if g.communityView == communityChat {
+		for _, char := range ebiten.AppendInputChars(nil) {
+			if char >= 32 && char <= 126 && len(g.chatDraft) < 220 {
+				g.chatDraft += string(char)
+			}
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && len(g.chatDraft) > 0 {
+			g.chatDraft = g.chatDraft[:len(g.chatDraft)-1]
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+			g.sendCommunityChat()
+			return
 		}
 	}
 	if g.communityView == communityPublishSetup {
@@ -387,6 +417,7 @@ func (g *Game) updateCommunityInput() {
 	if g.communityView == communityHome && communityAccountButton().Contains(x, y) {
 		g.profileBioDraft = g.profileBio
 		g.profileNameDraft = g.profileName
+		g.profileSocialDraft = g.profileSocial
 		g.communityView = communitySignIn
 		return
 	}
@@ -490,6 +521,11 @@ func (g *Game) updateCommunityInput() {
 			g.communityPage = 0
 			requestCommunityGallery(g.galleryKind, g.gallerySort)
 			return
+		case communityGalleryPlayedButton().Contains(x, y):
+			g.gallerySort = "played"
+			g.communityPage = 0
+			requestCommunityGallery(g.galleryKind, g.gallerySort)
+			return
 		case communityGalleryTopButton().Contains(x, y):
 			g.gallerySort = "top"
 			g.communityPage = 0
@@ -512,16 +548,16 @@ func (g *Game) updateCommunityInput() {
 				}
 				return
 			}
+			if communityGalleryChatButton(slot).Contains(x, y) {
+				g.openCommunityChat(item.Kind, item.ID, item.Title, communityBrowse)
+				return
+			}
 			if communityGalleryLikeButton(slot).Contains(x, y) {
 				if !communitySignedIn() {
 					g.communityView = communitySignIn
 				} else {
 					toggleCommunityLike(item.Kind, item.ID)
 				}
-				return
-			}
-			if item.Owned && communityGalleryPromoteButton(slot).Contains(x, y) {
-				promoteCommunityItem(item.Kind, item.ID)
 				return
 			}
 		}
@@ -533,12 +569,22 @@ func (g *Game) updateCommunityInput() {
 		}
 	case communityGalleryPack:
 		if g.selectedGallery >= 0 && g.selectedGallery < len(g.communityGallery) {
+			item := g.communityGallery[g.selectedGallery]
+			if communityGalleryPackChatButton().Contains(x, y) {
+				g.openCommunityChat(item.Kind, item.ID, item.Title, communityGalleryPack)
+				return
+			}
 			for slot := 0; slot < 6 && slot < len(g.communityGallery[g.selectedGallery].Levels); slot++ {
 				if communityGalleryPackLevelButton(slot).Contains(x, y) {
 					g.playGalleryPackLevel(slot)
 					return
 				}
 			}
+		}
+	case communityChat:
+		if communityChatSendButton().Contains(x, y) {
+			g.sendCommunityChat()
+			return
 		}
 	case communityPacks:
 		if communityLibraryPublishedTab().Contains(x, y) {
@@ -599,7 +645,7 @@ func (g *Game) updateCommunityInput() {
 		case communityPublishCoverButton().Contains(x, y):
 			requestCommunityCoverImport(10)
 		case communityPublishQuestionCoverButton().Contains(x, y):
-			g.publishPreviewRaw = communityQuestionCover()
+			g.publishPreviewRaw = nil
 		case communityPublishTitleField().Contains(x, y):
 			g.publishField = 0
 		case communityPublishDescriptionField().Contains(x, y):
@@ -655,12 +701,14 @@ func (g *Game) updateCommunityInput() {
 			return
 		}
 		if communityPackQuestionCoverButton().Contains(x, y) {
-			g.packSetupPreviewRaw = communityQuestionCover()
+			g.packSetupPreviewRaw = nil
+			g.packSetupPreview = 0
 			return
 		}
 		for art := 0; art < len(g.packSetupItems) && art < 8; art++ {
 			if communityPackSetupPreview(art).Contains(x, y) {
 				g.packSetupPreview = art
+				g.packSetupPreviewRaw = nil
 				return
 			}
 		}
@@ -680,24 +728,34 @@ func (g *Game) updateCommunityInput() {
 		if communitySignedIn() {
 			switch {
 			case communityAccountNameField().Contains(x, y):
-				g.profileNameEditing, g.profileBioEditing = true, false
+				g.profileNameEditing, g.profileBioEditing, g.profileSocialEditing = true, false, false
 			case communityAccountBioField().Contains(x, y):
-				g.profileBioEditing, g.profileNameEditing = true, false
+				g.profileBioEditing, g.profileNameEditing, g.profileSocialEditing = true, false, false
+			case communityAccountSocialField().Contains(x, y):
+				g.profileSocialEditing, g.profileNameEditing, g.profileBioEditing = true, false, false
 			case communityAccountBioSaveButton().Contains(x, y):
 				name := strings.TrimSpace(g.profileNameDraft)
 				if name == "" {
 					g.showCommunityNotice("name is required")
 					return
 				}
+				social, ok := normalizeProfileSocial(g.profileSocialDraft)
+				if !ok {
+					g.showCommunityNotice("social: use handles, not links")
+					return
+				}
 				g.profileName = name
 				g.profileBio = strings.TrimSpace(g.profileBioDraft)
+				g.profileSocial = social
 				saveCommunityName(g.profileName)
 				saveCommunityBio(g.profileBio)
+				saveCommunitySocial(g.profileSocial)
 				if raw, err := json.Marshal(g.profileArt.puzzle()); err == nil {
-					syncCommunityProfile(string(raw), g.profileBio, g.profileName)
+					syncCommunityProfile(string(raw), g.profileBio, g.profileName, g.profileSocial)
 				}
 				g.profileBioEditing = false
 				g.profileNameEditing = false
+				g.profileSocialEditing = false
 			case communitySignOutButton().Contains(x, y):
 				requestCommunitySignOut()
 				g.communityView = communityHome
@@ -713,8 +771,8 @@ func (g *Game) updateCommunityInput() {
 			}
 		}
 	case communityCreators:
-		start := g.communityPage * 4
-		for slot := 0; slot < 4 && start+slot < len(g.communityCreators); slot++ {
+		start := g.communityPage * communityCreatorsPerPage
+		for slot := 0; slot < communityCreatorsPerPage && start+slot < len(g.communityCreators); slot++ {
 			if communityCreatorButton(slot).Contains(x, y) {
 				g.selectedCreator = start + slot
 				g.communityPage = 0
@@ -776,6 +834,14 @@ func (g *Game) communityBack() {
 		}
 		return
 	}
+	if g.communityView == communityChat {
+		if g.chatReturn != 0 {
+			g.communityView = g.chatReturn
+		} else {
+			g.communityView = communityBrowse
+		}
+		return
+	}
 	if g.communityView == communityPublishSetup {
 		g.communityView = communityMyArt
 		return
@@ -812,9 +878,15 @@ func (g *Game) communityBack() {
 }
 
 func (g *Game) updateEditorInput() {
+	if g.editorTitleEditing {
+		g.updateEditorTitleInput()
+		return
+	}
 	if title := takeEditorTitle(); title != "" {
-		g.editor.Title = title
-		_ = g.saveCurrentDraft(false)
+		if !isEditorNoticeText(title) {
+			g.editor.Title = title
+			_ = g.saveCurrentDraft(false)
+		}
 	}
 	if raw := takeEditorColorPicker(); raw != "" {
 		if c, ok := parseEditorHexColor(raw); ok {
@@ -921,6 +993,77 @@ func (g *Game) updateEditorInput() {
 	g.editorLastY = cellY
 }
 
+func isEditorNoticeText(title string) bool {
+	switch title {
+	case "saved", "save unavailable", "exported", "export unavailable":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeProfileSocial(value string) (string, bool) {
+	value = strings.Join(strings.Fields(value), " ")
+	lower := strings.ToLower(value)
+	if strings.Contains(lower, "http://") || strings.Contains(lower, "https://") || strings.Contains(lower, "www.") {
+		return "", false
+	}
+	if strings.ContainsAny(value, `/\`) {
+		return "", false
+	}
+	if len(value) > 80 {
+		value = value[:80]
+	}
+	return value, true
+}
+
+func (g *Game) openEditorTitleDialog() {
+	g.editorTitleDraft = strings.TrimSpace(g.editor.Title)
+	g.editorTitleEditing = true
+	g.editorSizeOpen = false
+}
+
+func (g *Game) closeEditorTitleDialog(save bool) {
+	if save {
+		title := strings.TrimSpace(g.editorTitleDraft)
+		if title == "" {
+			title = "Untitled"
+		}
+		g.editor.Title = title
+		_ = g.saveCurrentDraft(false)
+	}
+	g.editorTitleEditing = false
+}
+
+func (g *Game) updateEditorTitleInput() {
+	for _, char := range ebiten.AppendInputChars(nil) {
+		if char >= 32 && char <= 126 && len(g.editorTitleDraft) < 80 {
+			g.editorTitleDraft += string(char)
+		}
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) && len(g.editorTitleDraft) > 0 {
+		g.editorTitleDraft = g.editorTitleDraft[:len(g.editorTitleDraft)-1]
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+		g.closeEditorTitleDialog(true)
+		return
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		g.closeEditorTitleDialog(false)
+		return
+	}
+	x, y, _, justPressed, _ := pointerState()
+	if !justPressed {
+		return
+	}
+	switch {
+	case editorTitleDialogSaveButton().Contains(x, y):
+		g.closeEditorTitleDialog(true)
+	case editorTitleDialogCancelButton().Contains(x, y):
+		g.closeEditorTitleDialog(false)
+	}
+}
+
 func (g *Game) handleEditorButton(x, y int) bool {
 	if g.editingProfile {
 		switch {
@@ -942,7 +1085,7 @@ func (g *Game) handleEditorButton(x, y int) bool {
 	case editorSizeButton().Contains(x, y):
 		g.editorSizeOpen = !g.editorSizeOpen
 	case editorTitleButton().Contains(x, y):
-		requestEditorTitle(g.editor.Title)
+		g.openEditorTitleDialog()
 	case editorPreviewButton().Contains(x, y):
 		g.loadEditorPuzzle()
 	case editorSaveButton().Contains(x, y):
