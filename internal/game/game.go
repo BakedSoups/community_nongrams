@@ -86,6 +86,8 @@ type Game struct {
 	profileSocialDrafts  [3]string
 	profileSocialEditing bool
 	profileSocialSlot    int
+	profilePalette       string
+	profileColor         string
 	profileName          string
 	profileNameDraft     string
 	profileNameEditing   bool
@@ -189,6 +191,8 @@ func New(puzzlePath string) (*Game, error) {
 		profileArt:       initialProfileArt(),
 		profileBio:       loadCommunityBio(),
 		profileSocial:    loadCommunitySocial(),
+		profilePalette:   loadCommunityPalette(),
+		profileColor:     loadCommunityFavoriteColor(),
 		profileName:      loadCommunityName(),
 		communityLibrary: loadCommunityLibrary(),
 		selectedCreator:  -1,

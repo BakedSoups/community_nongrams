@@ -58,13 +58,15 @@ type CommunityLevelStats struct {
 }
 
 type CreatorProfile struct {
-	ID           string           `json:"id"`
-	DisplayName  string           `json:"displayName"`
-	Bio          string           `json:"bio,omitempty"`
-	Social       string           `json:"social,omitempty"`
-	AvatarPuzzle *nonogram.Puzzle `json:"avatarPuzzle,omitempty"`
-	Featured     []GalleryItem    `json:"featured,omitempty"`
-	Levels       []LevelVersion   `json:"levels"`
+	ID            string           `json:"id"`
+	DisplayName   string           `json:"displayName"`
+	Bio           string           `json:"bio,omitempty"`
+	Social        string           `json:"social,omitempty"`
+	Palette       string           `json:"palette,omitempty"`
+	FavoriteColor string           `json:"favoriteColor,omitempty"`
+	AvatarPuzzle  *nonogram.Puzzle `json:"avatarPuzzle,omitempty"`
+	Featured      []GalleryItem    `json:"featured,omitempty"`
+	Levels        []LevelVersion   `json:"levels"`
 }
 
 type GalleryItem struct {

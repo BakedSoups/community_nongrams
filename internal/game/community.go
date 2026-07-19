@@ -102,10 +102,9 @@ func (g *Game) closeProfileEditor(save bool) {
 		g.editor.selectLayer(editorLayerAfter)
 		g.profileArt = g.editor.clone()
 		saveCommunityProfile(g.profileArt.packJSON())
-		saveCommunityBio(g.profileBio)
-		saveCommunitySocial(g.profileSocial)
+		g.saveCommunityProfileDetails()
 		if raw, err := json.Marshal(g.profileArt.puzzle()); err == nil {
-			syncCommunityProfile(string(raw), g.profileBio, g.profileName, g.profileSocial)
+			syncCommunityProfile(string(raw), g.profileBio, g.profileName, g.profileSocial, g.profilePalette, g.profileColor)
 		}
 	}
 	g.editor = g.profileReturn
@@ -121,8 +120,16 @@ func (g *Game) syncCommunityProfileArt() {
 		return
 	}
 	if raw, err := json.Marshal(g.profileArt.puzzle()); err == nil {
-		syncCommunityProfile(string(raw), g.profileBio, g.profileName, g.profileSocial)
+		syncCommunityProfile(string(raw), g.profileBio, g.profileName, g.profileSocial, g.profilePalette, g.profileColor)
 	}
+}
+
+func (g *Game) saveCommunityProfileDetails() {
+	saveCommunityBio(g.profileBio)
+	saveCommunitySocial(g.profileSocial)
+	saveCommunityName(g.profileName)
+	saveCommunityPalette(g.profilePalette)
+	saveCommunityFavoriteColor(g.profileColor)
 }
 
 func (g *Game) editCommunityDraft(index int) {

@@ -434,14 +434,14 @@
 	    setCommunityResult(error.message || "could not load creators");
 	  }
 	};
-	window.syncCommunityProfile = async (raw, bio, displayName, social) => {
+	window.syncCommunityProfile = async (raw, bio, displayName, social, palette, favoriteColor) => {
 	  const { url, key } = communityConfig();
 	  const session = await validCommunitySession().catch(() => null);
 	  if (!url || !key || !session?.access_token) return;
 	  try {
 	    const response = await fetch(`${url}/rest/v1/rpc/save_creator_profile`, {
 	      method: "POST", headers: communityHeaders(session.access_token),
-	      body: JSON.stringify({ p_avatar_puzzle: JSON.parse(raw), p_bio: String(bio || "").slice(0, 120), p_display_name: String(displayName || "Creator").slice(0, 40), p_social: String(social || "").slice(0, 160) })
+	      body: JSON.stringify({ p_avatar_puzzle: JSON.parse(raw), p_bio: String(bio || "").slice(0, 120), p_display_name: String(displayName || "Creator").slice(0, 40), p_social: String(social || "").slice(0, 160), p_palette: String(palette || "").slice(0, 40), p_favorite_color: String(favoriteColor || "").slice(0, 9) })
 	    });
 	    if (!response.ok) throw new Error((await response.json()).message || "Profile sync failed");
 	    window.requestCommunityCreators?.();

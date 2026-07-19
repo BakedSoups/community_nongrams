@@ -14,6 +14,14 @@ func saveCommunitySocial(string) bool { return false }
 
 func loadCommunitySocial() string { return "" }
 
+func saveCommunityPalette(string) bool { return false }
+
+func loadCommunityPalette() string { return "" }
+
+func saveCommunityFavoriteColor(string) bool { return false }
+
+func loadCommunityFavoriteColor() string { return "" }
+
 func saveCommunityName(string) bool { return false }
 
 func loadCommunityName() string { return "" }
@@ -64,7 +72,7 @@ func requestCommunityCreators() bool { return false }
 
 func takeCommunityCreators() string { return "" }
 
-func syncCommunityProfile(string, string, string, string) {}
+func syncCommunityProfile(string, string, string, string, string, string) {}
 
 func requestCommunityGallery(string, string) bool { return false }
 

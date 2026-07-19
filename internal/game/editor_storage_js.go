@@ -10,6 +10,8 @@ const (
 	communityProfileKey = "pixaross.community.profile"
 	communityBioKey     = "pixaross.community.bio"
 	communitySocialKey  = "pixaross.community.social"
+	communityPaletteKey = "pixaross.community.palette"
+	communityColorKey   = "pixaross.community.favorite_color"
 	communityNameKey    = "pixaross.community.name"
 )
 
@@ -58,6 +60,48 @@ func loadCommunitySocial() string {
 		return ""
 	}
 	value := storage.Call("getItem", communitySocialKey)
+	if value.IsUndefined() || value.IsNull() {
+		return ""
+	}
+	return value.String()
+}
+
+func saveCommunityPalette(palette string) bool {
+	storage := js.Global().Get("localStorage")
+	if storage.IsUndefined() || storage.IsNull() {
+		return false
+	}
+	storage.Call("setItem", communityPaletteKey, palette)
+	return true
+}
+
+func loadCommunityPalette() string {
+	storage := js.Global().Get("localStorage")
+	if storage.IsUndefined() || storage.IsNull() {
+		return ""
+	}
+	value := storage.Call("getItem", communityPaletteKey)
+	if value.IsUndefined() || value.IsNull() {
+		return ""
+	}
+	return value.String()
+}
+
+func saveCommunityFavoriteColor(color string) bool {
+	storage := js.Global().Get("localStorage")
+	if storage.IsUndefined() || storage.IsNull() {
+		return false
+	}
+	storage.Call("setItem", communityColorKey, color)
+	return true
+}
+
+func loadCommunityFavoriteColor() string {
+	storage := js.Global().Get("localStorage")
+	if storage.IsUndefined() || storage.IsNull() {
+		return ""
+	}
+	value := storage.Call("getItem", communityColorKey)
 	if value.IsUndefined() || value.IsNull() {
 		return ""
 	}
@@ -322,10 +366,10 @@ func takeCommunityCreators() string {
 	return value.String()
 }
 
-func syncCommunityProfile(raw, bio, name, social string) {
+func syncCommunityProfile(raw, bio, name, social, palette, favoriteColor string) {
 	fn := js.Global().Get("syncCommunityProfile")
 	if !fn.IsUndefined() && !fn.IsNull() {
-		fn.Invoke(raw, bio, name, social)
+		fn.Invoke(raw, bio, name, social, palette, favoriteColor)
 	}
 }
 

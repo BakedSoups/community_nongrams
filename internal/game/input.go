@@ -718,6 +718,14 @@ func (g *Game) updateCommunityInput() {
 				g.profileSocialSlot = -1
 			case communityAccountBioField().Contains(x, y):
 				g.profileBioEditing, g.profileNameEditing, g.profileSocialEditing = true, false, false
+			case communityAccountPaletteButton().Contains(x, y):
+				g.profilePalette = nextProfilePalette(g.profilePalette)
+				g.profileNameEditing, g.profileBioEditing, g.profileSocialEditing = false, false, false
+				g.profileSocialSlot = -1
+			case communityAccountColorButton().Contains(x, y):
+				g.profileColor = nextProfileColor(g.profileColor)
+				g.profileNameEditing, g.profileBioEditing, g.profileSocialEditing = false, false, false
+				g.profileSocialSlot = -1
 			case communityAccountBioSaveButton().Contains(x, y):
 				name := strings.TrimSpace(g.profileNameDraft)
 				if name == "" {
@@ -732,11 +740,9 @@ func (g *Game) updateCommunityInput() {
 				g.profileName = name
 				g.profileBio = strings.TrimSpace(g.profileBioDraft)
 				g.profileSocial = social
-				saveCommunityName(g.profileName)
-				saveCommunityBio(g.profileBio)
-				saveCommunitySocial(g.profileSocial)
+				g.saveCommunityProfileDetails()
 				if raw, err := json.Marshal(g.profileArt.puzzle()); err == nil {
-					syncCommunityProfile(string(raw), g.profileBio, g.profileName, g.profileSocial)
+					syncCommunityProfile(string(raw), g.profileBio, g.profileName, g.profileSocial, g.profilePalette, g.profileColor)
 				}
 				g.profileBioEditing = false
 				g.profileNameEditing = false
@@ -783,7 +789,7 @@ func (g *Game) updateCommunityInput() {
 		if g.selectedCreator >= 0 && g.selectedCreator < len(g.communityCreators) {
 			creator := g.communityCreators[g.selectedCreator]
 			levels := creator.Levels
-			contentY := communityCreatorProfileLevelsY(creator.Social, creator.Bio, len(creator.Featured) > 0)
+			contentY := communityCreatorProfileLevelsY(creator.Social, creator.Bio, creator.Palette, creator.FavoriteColor, len(creator.Featured) > 0)
 			start := g.communityPage * 4
 			for slot := 0; slot < 4 && start+slot < len(levels); slot++ {
 				if communityCreatorLevelButtonAt(slot, contentY).Contains(x, y) {
@@ -1072,6 +1078,34 @@ func socialPlatform(value string) string {
 	default:
 		return ""
 	}
+}
+
+var profilePaletteOptions = []string{"classic", "space", "candy", "mono"}
+
+var profileColorOptions = []string{"#A35A4D", "#4B8F8C", "#F4C95D", "#566F86", "#2D2D2B"}
+
+func nextProfilePalette(current string) string {
+	if current == "" {
+		return profilePaletteOptions[0]
+	}
+	for index, value := range profilePaletteOptions {
+		if value == current {
+			return profilePaletteOptions[(index+1)%len(profilePaletteOptions)]
+		}
+	}
+	return profilePaletteOptions[0]
+}
+
+func nextProfileColor(current string) string {
+	if current == "" {
+		return profileColorOptions[0]
+	}
+	for index, value := range profileColorOptions {
+		if strings.EqualFold(value, current) {
+			return profileColorOptions[(index+1)%len(profileColorOptions)]
+		}
+	}
+	return profileColorOptions[0]
 }
 
 func normalizeProfileSocialLink(value string) (string, bool) {
