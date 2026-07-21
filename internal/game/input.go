@@ -52,6 +52,33 @@ func (g *Game) updateInput() {
 		g.godModeFill()
 		return
 	}
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+		x, y := ebiten.CursorPosition()
+		cellX, cellY, ok := g.layout.CellAt(x, y, g.board.Width, g.board.Height)
+		if ok {
+			g.pushUndo()
+			next := nonogram.CellMarked
+			if g.board.Cells[cellY][cellX] == nonogram.CellMarked {
+				next = nonogram.CellEmpty
+			}
+			next, corrected := g.correctedStrokeState(cellX, cellY, next)
+			if g.board.SetCell(cellX, cellY, next) {
+				if corrected {
+					g.timePenalty += 10 * time.Second
+					g.penaltyFlashUntil = time.Now().Add(900 * time.Millisecond)
+					g.correctFlashUntil = time.Now().Add(850 * time.Millisecond)
+					g.correctFlashX, g.correctFlashY = cellX, cellY
+					playWebSFX("correct")
+				} else {
+					playWebSFX("eraser")
+				}
+				if nonogram.IsSolved(g.board, g.puzzle.Solution) {
+					g.completePuzzle()
+				}
+			}
+		}
+		return
+	}
 
 	x, y, down, justPressed, justReleased := pointerState()
 	if justReleased {
