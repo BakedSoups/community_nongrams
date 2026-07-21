@@ -248,11 +248,14 @@ func (g *Game) updateMainMenuInput() {
 	}
 	switch {
 	case mainLevelButton().Contains(x, y):
+		playWebSFX("menu")
 		g.mode = screenLevelSelect
 	case mainCommunityButton().Contains(x, y):
+		playWebSFX("menu")
 		g.communityView = communityHome
 		g.mode = screenCommunity
 	case mainSettingsButton().Contains(x, y):
+		playWebSFX("menu")
 		g.mode = screenSettings
 	}
 }
