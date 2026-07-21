@@ -280,7 +280,7 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) updateMusicMode() {
-	communityOn := g.mode == screenCommunity
+	communityOn := g.mode == screenCommunity || g.communityPreview
 	if g.communityMusicOn == communityOn {
 		return
 	}
