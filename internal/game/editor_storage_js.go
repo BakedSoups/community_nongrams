@@ -40,22 +40,47 @@ func loadStorageValue(key, legacySuffix string) string {
 	return text
 }
 
-func saveCommunityProfile(raw string) bool {
+func saveStorageValue(key, value string) bool {
 	storage := js.Global().Get("localStorage")
 	if storage.IsUndefined() || storage.IsNull() {
 		return false
 	}
-	storage.Call("setItem", communityProfileKey, raw)
+	storage.Call("setItem", key, value)
 	return true
 }
 
-func saveCommunityBio(bio string) bool {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return false
+func invokeJS(name string, args ...any) (js.Value, bool) {
+	fn := js.Global().Get(name)
+	if fn.IsUndefined() || fn.IsNull() {
+		return js.Undefined(), false
 	}
-	storage.Call("setItem", communityBioKey, bio)
-	return true
+	return fn.Invoke(args...), true
+}
+
+func callJS(name string, args ...any) bool {
+	_, ok := invokeJS(name, args...)
+	return ok
+}
+
+func callJSString(name, fallback string, args ...any) string {
+	value, ok := invokeJS(name, args...)
+	if !ok || value.IsUndefined() || value.IsNull() {
+		return fallback
+	}
+	return value.String()
+}
+
+func callJSBool(name string, args ...any) bool {
+	value, ok := invokeJS(name, args...)
+	return ok && !value.IsUndefined() && !value.IsNull() && value.Bool()
+}
+
+func saveCommunityProfile(raw string) bool {
+	return saveStorageValue(communityProfileKey, raw)
+}
+
+func saveCommunityBio(bio string) bool {
+	return saveStorageValue(communityBioKey, bio)
 }
 
 func loadCommunityBio() string {
@@ -63,12 +88,7 @@ func loadCommunityBio() string {
 }
 
 func saveCommunitySocial(social string) bool {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return false
-	}
-	storage.Call("setItem", communitySocialKey, social)
-	return true
+	return saveStorageValue(communitySocialKey, social)
 }
 
 func loadCommunitySocial() string {
@@ -76,12 +96,7 @@ func loadCommunitySocial() string {
 }
 
 func saveCommunityPalette(palette string) bool {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return false
-	}
-	storage.Call("setItem", communityPaletteKey, palette)
-	return true
+	return saveStorageValue(communityPaletteKey, palette)
 }
 
 func loadCommunityPalette() string {
@@ -89,12 +104,7 @@ func loadCommunityPalette() string {
 }
 
 func saveCommunityFavoriteColor(color string) bool {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return false
-	}
-	storage.Call("setItem", communityColorKey, color)
-	return true
+	return saveStorageValue(communityColorKey, color)
 }
 
 func loadCommunityFavoriteColor() string {
@@ -102,35 +112,18 @@ func loadCommunityFavoriteColor() string {
 }
 
 func saveCommunityName(name string) bool {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return false
-	}
-	storage.Call("setItem", communityNameKey, name)
-	return true
+	return saveStorageValue(communityNameKey, name)
 }
 
 func loadCommunityName() string {
 	if value := loadStorageValue(communityNameKey, ".community.name"); value != "" {
 		return value
 	}
-	fn := js.Global().Get("communityDisplayName")
-	if !fn.IsUndefined() && !fn.IsNull() {
-		return fn.Invoke().String()
-	}
-	return ""
+	return callJSString("communityDisplayName", "")
 }
 
 func takeTextPaste() string {
-	fn := js.Global().Get("takeTextPaste")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeTextPaste", "")
 }
 
 func loadCommunityProfile() string {
@@ -138,29 +131,15 @@ func loadCommunityProfile() string {
 }
 
 func communityAccountLabel() string {
-	fn := js.Global().Get("communityAccountLabel")
-	if fn.IsUndefined() || fn.IsNull() {
-		return "Sign in"
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return "Sign in"
-	}
-	return value.String()
+	return callJSString("communityAccountLabel", "Sign in")
 }
 
 func communitySignedIn() bool {
-	fn := js.Global().Get("communitySignedIn")
-	return !fn.IsUndefined() && !fn.IsNull() && fn.Invoke().Bool()
+	return callJSBool("communitySignedIn")
 }
 
 func saveCommunityData(raw string) bool {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return false
-	}
-	storage.Call("setItem", communityLibraryKey, raw)
-	return true
+	return saveStorageValue(communityLibraryKey, raw)
 }
 
 func loadCommunityData() string {
@@ -168,486 +147,197 @@ func loadCommunityData() string {
 }
 
 func requestCommunityImport(size int, vertical bool) bool {
-	fn := js.Global().Get("requestCommunityImport")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(size, vertical)
-	return true
+	return callJS("requestCommunityImport", size, vertical)
 }
 
 func takeCommunityImport() string {
-	fn := js.Global().Get("takeCommunityImport")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityImport", "")
 }
 
 func requestCommunitySignIn(email string) bool {
-	fn := js.Global().Get("requestCommunitySignIn")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(email)
-	return true
+	return callJS("requestCommunitySignIn", email)
 }
 
 func requestCommunitySignOut() bool {
-	fn := js.Global().Get("requestCommunitySignOut")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke()
-	return true
+	return callJS("requestCommunitySignOut")
 }
 
 func requestCommunityGoogleSignIn() bool {
-	fn := js.Global().Get("requestCommunityGoogleSignIn")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke()
-	return true
+	return callJS("requestCommunityGoogleSignIn")
 }
 
 func requestCommunityPublish(raw string, submitOfficial, rightsConfirmed bool, preview string) bool {
-	fn := js.Global().Get("requestCommunityPublish")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(raw, submitOfficial, rightsConfirmed, preview)
-	return true
+	return callJS("requestCommunityPublish", raw, submitOfficial, rightsConfirmed, preview)
 }
 
 func requestCommunityPackPublish(raw, preview string) bool {
-	fn := js.Global().Get("requestCommunityPackPublish")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(raw, preview)
-	return true
+	return callJS("requestCommunityPackPublish", raw, preview)
 }
 
 func takeCommunityResult() string {
-	fn := js.Global().Get("takeCommunityResult")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityResult", "")
 }
 
 func takeCommunityPublishedID() string {
-	fn := js.Global().Get("takeCommunityPublishedID")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityPublishedID", "")
 }
 
 func takeCommunityPublishedPackID() string {
-	fn := js.Global().Get("takeCommunityPublishedPackID")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityPublishedPackID", "")
 }
 
 func requestCommunityCatalog(kind string) bool {
-	fn := js.Global().Get("requestCommunityCatalog")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(kind)
-	return true
+	return callJS("requestCommunityCatalog", kind)
 }
 
 func takeCommunityCatalog() string {
-	fn := js.Global().Get("takeCommunityCatalog")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityCatalog", "")
 }
 
 func syncCommunityDraft(raw string) {
-	fn := js.Global().Get("syncCommunityDraft")
-	if !fn.IsUndefined() && !fn.IsNull() {
-		fn.Invoke(raw)
-	}
+	callJS("syncCommunityDraft", raw)
 }
 
 func requestCommunityCloudDrafts() bool {
-	fn := js.Global().Get("requestCommunityCloudDrafts")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke()
-	return true
+	return callJS("requestCommunityCloudDrafts")
 }
 
 func takeCommunityCloudDrafts() string {
-	fn := js.Global().Get("takeCommunityCloudDrafts")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityCloudDrafts", "")
 }
 
 func requestCommunityCreators() bool {
-	fn := js.Global().Get("requestCommunityCreators")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke()
-	return true
+	return callJS("requestCommunityCreators")
 }
 
 func takeCommunityCreators() string {
-	fn := js.Global().Get("takeCommunityCreators")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityCreators", "")
 }
 
 func syncCommunityProfile(raw, bio, name, social, palette, favoriteColor string) {
-	fn := js.Global().Get("syncCommunityProfile")
-	if !fn.IsUndefined() && !fn.IsNull() {
-		fn.Invoke(raw, bio, name, social, palette, favoriteColor)
-	}
+	callJS("syncCommunityProfile", raw, bio, name, social, palette, favoriteColor)
 }
 
 func deleteCommunityCloudDraft(id string) {
-	fn := js.Global().Get("deleteCommunityCloudDraft")
-	if !fn.IsUndefined() && !fn.IsNull() {
-		fn.Invoke(id)
-	}
+	callJS("deleteCommunityCloudDraft", id)
 }
 
 func requestCommunityGallery(kind, sort string) bool {
-	fn := js.Global().Get("requestCommunityGallery")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(kind, sort)
-	return true
+	return callJS("requestCommunityGallery", kind, sort)
 }
 
 func takeCommunityGallery() string {
-	fn := js.Global().Get("takeCommunityGallery")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityGallery", "")
 }
 
 func requestCommunityChat(kind, id string) bool {
-	fn := js.Global().Get("requestCommunityChat")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(kind, id)
-	return true
+	return callJS("requestCommunityChat", kind, id)
 }
 
 func takeCommunityChat() string {
-	fn := js.Global().Get("takeCommunityChat")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityChat", "")
 }
 
 func postCommunityChat(kind, id, body string) bool {
-	fn := js.Global().Get("postCommunityChat")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(kind, id, body)
-	return true
+	return callJS("postCommunityChat", kind, id, body)
 }
 
 func recordCommunityPlay(levelID string, completed bool) {
-	fn := js.Global().Get("recordCommunityPlay")
-	if !fn.IsUndefined() && !fn.IsNull() {
-		fn.Invoke(levelID, completed)
-	}
+	callJS("recordCommunityPlay", levelID, completed)
 }
 
 func requestCommunityCompleted() bool {
-	fn := js.Global().Get("requestCommunityCompleted")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke()
-	return true
+	return callJS("requestCommunityCompleted")
 }
 
 func takeCommunityCompleted() string {
-	fn := js.Global().Get("takeCommunityCompleted")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityCompleted", "")
 }
 
 func requestCommunityPublished() bool {
-	fn := js.Global().Get("requestCommunityPublished")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke()
-	return true
+	return callJS("requestCommunityPublished")
 }
 
 func takeCommunityPublished() string {
-	fn := js.Global().Get("takeCommunityPublished")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityPublished", "")
 }
 
 func unpublishCommunityItem(kind, id string) bool {
-	fn := js.Global().Get("unpublishCommunityItem")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(kind, id)
-	return true
+	return callJS("unpublishCommunityItem", kind, id)
 }
 
 func unpublishCommunityLocalArt(id string) bool {
-	fn := js.Global().Get("unpublishCommunityLocalArt")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(id)
-	return true
+	return callJS("unpublishCommunityLocalArt", id)
 }
 
 func updateCommunityPublishedItem(kind, id, title, description, levelsRaw string) bool {
-	fn := js.Global().Get("updateCommunityPublishedItem")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(kind, id, title, description, levelsRaw)
-	return true
+	return callJS("updateCommunityPublishedItem", kind, id, title, description, levelsRaw)
 }
 
 func toggleCommunityLike(kind, id string) bool {
-	fn := js.Global().Get("toggleCommunityLike")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(kind, id)
-	return true
+	return callJS("toggleCommunityLike", kind, id)
 }
 
 func promoteCommunityItem(kind, id string) bool {
-	fn := js.Global().Get("promoteCommunityItem")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(kind, id)
-	return true
+	return callJS("promoteCommunityItem", kind, id)
 }
 
 func saveEditorPack(raw string) bool {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return false
-	}
-	storage.Call("setItem", editorPackKey, raw)
-	return true
+	return saveStorageValue(editorPackKey, raw)
 }
 
 func loadEditorPack() string {
-	storage := js.Global().Get("localStorage")
-	if storage.IsUndefined() || storage.IsNull() {
-		return ""
-	}
-	raw := storage.Call("getItem", editorPackKey)
-	if raw.IsUndefined() || raw.IsNull() {
-		return ""
-	}
-	return raw.String()
+	return loadStorageValue(editorPackKey, "")
 }
 
 func exportEditorImage(filename, raw string) bool {
-	fn := js.Global().Get("downloadEditorImage")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(filename, raw)
-	return true
+	return callJS("downloadEditorImage", filename, raw)
 }
 
 func requestEditorImageImport(size int) bool {
-	fn := js.Global().Get("requestEditorImageImport")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(size)
-	return true
+	return callJS("requestEditorImageImport", size)
 }
 
 func takeEditorImageImport() string {
-	fn := js.Global().Get("takeEditorImageImport")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	raw := fn.Invoke()
-	if raw.IsUndefined() || raw.IsNull() {
-		return ""
-	}
-	return raw.String()
+	return callJSString("takeEditorImageImport", "")
 }
 
 func requestEditorColorPicker(initial string) bool {
-	fn := js.Global().Get("requestEditorColorPicker")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(initial)
-	return true
+	return callJS("requestEditorColorPicker", initial)
 }
 
 func takeEditorColorPicker() string {
-	fn := js.Global().Get("takeEditorColorPicker")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeEditorColorPicker", "")
 }
 
 func requestEditorTitle(current string) bool {
-	fn := js.Global().Get("requestEditorTitle")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(current)
-	return true
+	return callJS("requestEditorTitle", current)
 }
 
 func takeEditorTitle() string {
-	fn := js.Global().Get("takeEditorTitle")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeEditorTitle", "")
 }
 
 func clearEditorTitle() {
-	fn := js.Global().Get("clearEditorTitle")
-	if !fn.IsUndefined() && !fn.IsNull() {
-		fn.Invoke()
-	}
+	callJS("clearEditorTitle")
 }
 
 func requestCommunityCoverImport(size int) bool {
-	fn := js.Global().Get("requestCommunityCoverImport")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke(size)
-	return true
+	return callJS("requestCommunityCoverImport", size)
 }
 
 func takeCommunityCoverImport() string {
-	fn := js.Global().Get("takeCommunityCoverImport")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return ""
-	}
-	return value.String()
+	return callJSString("takeCommunityCoverImport", "")
 }
 
 func requestEditorPackImport() bool {
-	fn := js.Global().Get("requestEditorPackImport")
-	if fn.IsUndefined() || fn.IsNull() {
-		return false
-	}
-	fn.Invoke()
-	return true
+	return callJS("requestEditorPackImport")
 }
 
 func takeEditorPackImport() string {
-	fn := js.Global().Get("takeEditorPackImport")
-	if fn.IsUndefined() || fn.IsNull() {
-		return ""
-	}
-	raw := fn.Invoke()
-	if raw.IsUndefined() || raw.IsNull() {
-		return ""
-	}
-	return raw.String()
+	return callJSString("takeEditorPackImport", "")
 }
 
 func communityFetchStatus() string {
-	fn := js.Global().Get("communityFetchStatus")
-	if fn.IsUndefined() || fn.IsNull() {
-		return "Supabase not configured"
-	}
-	value := fn.Invoke()
-	if value.IsUndefined() || value.IsNull() {
-		return "Supabase not configured"
-	}
-	return value.String()
+	return callJSString("communityFetchStatus", "Supabase not configured")
 }
