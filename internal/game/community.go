@@ -804,12 +804,7 @@ func (g *Game) playGalleryLevel(index int) {
 		return
 	}
 	item := g.communityGallery[index]
-	recordCommunityPlay(item.ID, false)
-	puzzle := *item.Puzzle
-	puzzle.ID = item.ID
-	g.activeCommunityPack = ""
-	g.communityPlayReturn = communityBrowse
-	g.loadCommunityPuzzle(&puzzle)
+	g.playCommunityLevel(item.Puzzle, item.ID, communityBrowse)
 }
 
 func (g *Game) playGalleryPackLevel(index int) {
@@ -820,12 +815,7 @@ func (g *Game) playGalleryPackLevel(index int) {
 	if index < 0 || index >= len(levels) || levels[index].Puzzle == nil {
 		return
 	}
-	recordCommunityPlay(levels[index].LevelID, false)
-	puzzle := *levels[index].Puzzle
-	puzzle.ID = levels[index].LevelID
-	g.activeCommunityPack = ""
-	g.communityPlayReturn = communityGalleryPack
-	g.loadCommunityPuzzle(&puzzle)
+	g.playCommunityLevel(levels[index].Puzzle, levels[index].LevelID, communityGalleryPack)
 }
 
 func (g *Game) loadCommunityCreators(raw string) error {
@@ -885,11 +875,15 @@ func (g *Game) playCreatorLevel(index int) {
 	if index < 0 || index >= len(levels) || levels[index].Puzzle == nil {
 		return
 	}
-	recordCommunityPlay(levels[index].LevelID, false)
-	puzzle := *levels[index].Puzzle
-	puzzle.ID = levels[index].LevelID
+	g.playCommunityLevel(levels[index].Puzzle, levels[index].LevelID, communityCreatorProfile)
+}
+
+func (g *Game) playCommunityLevel(source *nonogram.Puzzle, levelID string, returnView communityView) {
+	recordCommunityPlay(levelID, false)
+	puzzle := *source
+	puzzle.ID = levelID
 	g.activeCommunityPack = ""
-	g.communityPlayReturn = communityCreatorProfile
+	g.communityPlayReturn = returnView
 	g.loadCommunityPuzzle(&puzzle)
 }
 
